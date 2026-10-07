@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Иви — Телепрограмма канала</title>
+  <link rel="preconnect" href="https://app.paper.design" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="page sched-page">
+    <button class="sched-close" id="schClose" aria-label="Закрыть">
+      <svg viewBox="0 0 20 20" width="20" height="20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M4 4l12 12M16 4L4 16"/></svg>
+    </button>
+    <div class="sched-col">
+      <div class="sched-sticky">
+        <h1 class="schedule-title" id="schTitle">Канал</h1>
+        <div class="day-tabs" id="dayTabs"></div>
+      </div>
+      <div class="full-epg" id="fullEpg"></div>
+      <div class="sched-about">
+        <p class="sched-about-text" id="schDesc"></p>
+        <button class="sched-expand" id="schExpand">Развернуть</button>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="schedule.js"></script>
+</body>
+</html>

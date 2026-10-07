@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Иви — ТВ онлайн</title>
+  <link rel="preconnect" href="https://app.paper.design" />
+  <link rel="preconnect" href="https://thumbs.dfs.ivi.ru" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="page phone home">
+   <div class="phone-scroll">
+    <!-- Шапка -->
+    <header class="topbar">
+      <a class="logo" href="index.html" aria-label="Иви">
+        <img src="https://app.paper.design/file-assets/01M45XC9MW0NZTHRFA799G9DJ7/06CX82JTQBEJPQWZX8M5167B35.png" alt="Иви" />
+      </a>
+      <nav class="nav">
+        <a href="#">Мой Иви</a>
+        <a href="#">Фильмы</a>
+        <a href="#">Сериалы</a>
+        <a href="#">Детям</a>
+        <a href="index.html" class="is-current">ТВ</a>
+        <a href="#">Шоу</a>
+        <a href="#">Спорт</a>
+      </nav>
+      <div class="topbar-right">
+        <button class="btn-cta">Смотреть 30 дней бесплатно</button>
+        <button class="icon-text">
+          <img class="ic" src="https://app.paper.design/file-assets/01M45XC9MW0NZTHRFA799G9DJ7/0M4EH12W4FFRYHRJXA76C1F1G5.svg" alt="" />
+          <span>Поиск</span>
+        </button>
+        <button class="icon-only" aria-label="Уведомления">
+          <img class="ic" src="https://app.paper.design/file-assets/01M45XC9MW0NZTHRFA799G9DJ7/11PRSQGKEJHZA7KKMBJ32TM9ZC.svg" alt="" />
+        </button>
+        <button class="btn-login">
+          <img class="avatar" src="https://app.paper.design/file-assets/01M45XC9MW0NZTHRFA799G9DJ7/02DQY8ZFK9F15VN9EMCZVC3W53.svg" alt="" />
+          <span>Войти</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Хлебные крошки -->
+    <nav class="crumbs crumbs-top">
+      <a href="#" class="crumbs-strong">Мой Иви</a><span class="dot"></span>
+      <span class="crumbs-muted">ТВ-каналы</span>
+    </nav>
+
+    <!-- Заголовок / переключатель секций (ТВ онлайн · Программа передач) -->
+    <section class="intro">
+      <h1 class="page-title">ТВ онлайн</h1>
+      <div class="section-switch">
+        <a class="sw-item is-active" href="index.html">ТВ онлайн</a>
+        <a class="sw-item" href="program.html">Программа передач</a>
+      </div>
+    </section>
+    <!-- Табы вынесены из .intro, чтобы sticky работал на всю высоту ленты -->
+    <div class="tabs-bar"><nav class="tabs" id="tabs"></nav></div>
+
+    <!-- Кнопка перехода в телепрограмму -->
+    <div class="toolbar">
+      <a class="btn-tomorrow" href="program.html">
+        <img class="ic" src="https://app.paper.design/file-assets/01M45XC9MW0NZTHRFA799G9DJ7/02HXJ2JBPVA3AJMDYC67BA7E1X.svg" alt="" />
+        <span>Телепрограмма</span>
+      </a>
+    </div>
+
+    <!-- Вариант 1: ленты каналов + блок трансляций + галерея шоу -->
+    <div id="v1Body"></div>
+
+    <!-- As is: прежний каталог -->
+    <div id="asisBody">
+    <!-- Федеральные каналы -->
+    <section class="section">
+      <div class="section-head"><h2 class="section-title" id="catFederalTitle">Федеральные каналы <span class="chev">›</span></h2></div>
+      <div class="rail" id="catFederal"></div>
+    </section>
+
+    <!-- Описание -->
+    <section class="section seo-block">
+      <p class="seo-text" id="catSeo">Теперь телевидение стало ещё удобнее и доступнее. Специально для наших зрителей мы собрали коллекцию лучших отечественных каналов. Вы можете смотреть прямые эфиры федеральных, развлекательных, познавательных и детских телеканалов онлайн — бесплатно и в хорошем качестве, без регистрации, прямо на платформе Иви.</p>
+      <button class="sched-expand" id="catSeoExpand">Развернуть</button>
+    </section>
+
+    <!-- ТВ шоу -->
+    <section class="section">
+      <h2 class="section-title">ТВ шоу <span class="chev">›</span></h2>
+      <div class="rail rail-posters" id="catShows"></div>
+    </section>
+
+    <!-- Развлекательные каналы -->
+    <section class="section">
+      <h2 class="section-title">Развлекательные каналы <span class="chev">›</span></h2>
+      <div class="rail" id="catEnt"></div>
+    </section>
+
+    <!-- Кино и сериалы -->
+    <section class="section">
+      <h2 class="section-title">Кино и сериалы <span class="chev">›</span></h2>
+      <div class="rail" id="catMovies"></div>
+    </section>
+
+    <!-- Самое интересное -->
+    <section class="section">
+      <h2 class="section-title">Самое интересное</h2>
+      <div class="rail rail-wide" id="catCollections"></div>
+    </section>
+    </div><!-- /#asisBody -->
+   </div>
+
+    <!-- Мобильные элементы -->
+    <button class="m-cta">Открыть в приложении</button>
+    <nav class="m-tabbar">
+      <a class="m-tab" href="#"><svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M12 3 4 9v11h5v-6h6v6h5V9z"/></svg><span>Мой Иви</span></a>
+      <a class="m-tab" href="#"><svg viewBox="0 0 24 24" width="22" height="22"><rect x="3" y="4" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path fill="currentColor" d="M10 9l5 3-5 3z"/></svg><span>Каталог</span></a>
+      <a class="m-tab" href="#"><svg viewBox="0 0 24 24" width="22" height="22"><circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M20 20l-4-4"/></svg><span>Поиск</span></a>
+      <a class="m-tab is-active" href="index.html"><svg viewBox="0 0 24 24" width="22" height="22"><rect x="3" y="5" width="18" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M9 21h6"/></svg><span>ТВ</span></a>
+      <a class="m-tab" href="#"><svg viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M5 20c1.5-3.5 4-5 7-5s5.5 1.5 7 5"/></svg><span>Войти</span></a>
+    </nav>
+  </div>
+
+  <script type="module" src="shell.js"></script>
+  <script type="module" src="catalog.js"></script>
+</body>
+</html>

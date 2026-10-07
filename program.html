@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Иви — ТВ-каналы · Программа передач</title>
+  <link rel="preconnect" href="https://app.paper.design" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="page">
+   <div class="phone-scroll">
+    <!-- Шапка -->
+    <header class="topbar">
+      <a class="logo" href="#" aria-label="Иви">
+        <img src="https://app.paper.design/file-assets/01M45XC9MW0NZTHRFA799G9DJ7/06CX82JTQBEJPQWZX8M5167B35.png" alt="Иви" />
+      </a>
+      <nav class="nav">
+        <a href="#">Мой Иви</a>
+        <a href="#">Фильмы</a>
+        <a href="#">Сериалы</a>
+        <a href="#">Детям</a>
+        <a href="#" class="is-current">ТВ</a>
+        <a href="#">Шоу</a>
+        <a href="#">Спорт</a>
+      </nav>
+      <div class="topbar-right">
+        <button class="btn-cta">Смотреть 30 дней бесплатно</button>
+        <button class="icon-text">
+          <img class="ic" src="https://app.paper.design/file-assets/01M45XC9MW0NZTHRFA799G9DJ7/0M4EH12W4FFRYHRJXA76C1F1G5.svg" alt="" />
+          <span>Поиск</span>
+        </button>
+        <button class="icon-only" aria-label="Уведомления">
+          <img class="ic" src="https://app.paper.design/file-assets/01M45XC9MW0NZTHRFA799G9DJ7/11PRSQGKEJHZA7KKMBJ32TM9ZC.svg" alt="" />
+        </button>
+        <button class="btn-login">
+          <img class="avatar" src="https://app.paper.design/file-assets/01M45XC9MW0NZTHRFA799G9DJ7/02DQY8ZFK9F15VN9EMCZVC3W53.svg" alt="" />
+          <span>Войти</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Хлебные крошки -->
+    <nav class="crumbs crumbs-top">
+      <a href="#" class="crumbs-strong">Мой Иви</a><span class="dot"></span>
+      <a href="index.html" class="crumbs-muted">ТВ-каналы</a><span class="dot"></span>
+      <span class="crumbs-muted">Телепрограмма</span>
+    </nav>
+
+    <!-- Заголовок / переключатель секций (ТВ онлайн · Программа передач) -->
+    <section class="intro">
+      <h1 class="page-title">Программа передач на сегодня</h1>
+      <div class="section-switch">
+        <a class="sw-item" href="index.html">ТВ онлайн</a>
+        <a class="sw-item is-active" href="program.html">Программа передач</a>
+      </div>
+    </section>
+    <!-- Табы категорий (первый — дропдаун даты «Сегодня») -->
+    <div class="tabs-bar"><nav class="tabs" id="tabs"></nav></div>
+
+    <!-- Панель: завтра + переключатель -->
+    <div class="toolbar">
+      <button class="btn-tomorrow">
+        <img class="ic" src="https://app.paper.design/file-assets/01M45XC9MW0NZTHRFA799G9DJ7/02HXJ2JBPVA3AJMDYC67BA7E1X.svg" alt="" />
+        <span>Программа на завтра</span>
+      </button>
+      <label class="switch">
+        <span class="switch-label">Телепрограмма</span>
+        <button class="toggle is-on" id="tvToggle" role="switch" aria-checked="true"><span class="knob"></span></button>
+      </label>
+    </div>
+
+    <!-- Федеральные каналы -->
+    <section class="section">
+      <div class="section-head">
+        <h2 class="section-title" id="gridTitle">Федеральные каналы <span class="chev">›</span></h2>
+      </div>
+      <div class="grid" id="channelGrid"></div>
+    </section>
+
+    <!-- ТВ шоу (галерея как в каталоге) -->
+    <section class="gal show-gal section" id="progShows"></section>
+
+    <!-- Самое интересное -->
+    <section class="section">
+      <h2 class="section-title">Самое интересное</h2>
+      <div class="rail rail-wide" id="collectionsRail"></div>
+    </section>
+
+    <!-- Описание -->
+    <footer class="seo">
+      <p>Просмотр телеканалов на платформе онлайн кинотеатра Иви стал уже привычным для пользователей. Это – самый удобный способ выбора качественных телепрограмм на сегодня и контента на любой вкус. Ассортимент телепрограмм на нашей платформе очень широк. Телеканалы распределены по категориям: развлекательные, познавательные, информационные, спортивные, музыкальные, детские. Поэтому любой зритель не останется без любимого зрелища: мужчины и женщины, ветераны и юные зрители, поклонники рыбалки и любительницы приобретения товаров на расстоянии, фанаты футбола (хоккея, биатлона, смешанных единоборств), поклонники фильмов о природе, любители погружения в тайны истории – никого не оставит равнодушным спектр телевещания, доступный подписчикам Иви.</p>
+    </footer>
+   </div>
+
+    <!-- Мобильные элементы (видны только в режиме «Мобайл») -->
+    <button class="m-cta">Открыть в приложении</button>
+    <nav class="m-tabbar">
+      <a class="m-tab" href="#"><svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M12 3 4 9v11h5v-6h6v6h5V9z"/></svg><span>Мой Иви</span></a>
+      <a class="m-tab" href="#"><svg viewBox="0 0 24 24" width="22" height="22"><rect x="3" y="4" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path fill="currentColor" d="M10 9l5 3-5 3z"/></svg><span>Каталог</span></a>
+      <a class="m-tab" href="#"><svg viewBox="0 0 24 24" width="22" height="22"><circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M20 20l-4-4"/></svg><span>Поиск</span></a>
+      <a class="m-tab is-active" href="index.html"><svg viewBox="0 0 24 24" width="22" height="22"><rect x="3" y="5" width="18" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M9 21h6"/></svg><span>ТВ</span></a>
+      <a class="m-tab" href="#"><svg viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M5 20c1.5-3.5 4-5 7-5s5.5 1.5 7 5"/></svg><span>Войти</span></a>
+    </nav>
+  </div>
+
+  <script type="module" src="shell.js"></script>
+  <script type="module" src="program.js"></script>
+</body>
+</html>

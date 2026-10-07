@@ -1,0 +1,174 @@
+// Глобальная оболочка прототипа: переключатель режимов (As is / Варианты 1-3)
+// и переключатель устройства (Десктоп / Мобайл). Слой с настройками лежит
+// ПОЗАДИ основного экрана: свайп/скролл вверх у верхнего края «отодвигает»
+// основной экран вниз, открывая слой настроек.
+
+const MODES = [
+  { id: "asis", label: "As is", sub: "Как сейчас работает сервис" },
+  { id: "v1", label: "Вариант 1", sub: "Гипотеза A" },
+  { id: "v2", label: "Вариант 2", sub: "Гипотеза B" },
+  { id: "v3", label: "Вариант 3", sub: "Гипотеза C", disabled: true },
+];
+
+// ---------- Режим прототипа ----------
+const KEY = "ivi-proto-mode";
+const getMode = () => { try { return localStorage.getItem(KEY) || "asis"; } catch { return "asis"; } };
+function setMode(id) {
+  try { localStorage.setItem(KEY, id); } catch {}
+  document.documentElement.setAttribute("data-mode", id);
+  document.querySelectorAll(".mode-tab").forEach((t) =>
+    t.classList.toggle("is-active", t.dataset.mode === id)
+  );
+  window.dispatchEvent(new CustomEvent("modechange", { detail: { mode: id } }));
+}
+
+// ---------- Устройство ----------
+const DEVICE_KEY = "ivi-proto-device";
+const getDevice = () => { try { return localStorage.getItem(DEVICE_KEY) || "desktop"; } catch { return "desktop"; } };
+const PHONE_W = 430, PHONE_H = 932; // iPhone 15 Pro Max (pt)
+
+function updatePhoneScale() {
+  if (getDevice() === "mobile") {
+    const s = Math.min(1, (window.innerHeight - 40) / PHONE_H);
+    document.documentElement.style.setProperty("--phone-scale", s.toFixed(3));
+  } else {
+    document.documentElement.style.removeProperty("--phone-scale");
+  }
+}
+function setDevice(d) {
+  try { localStorage.setItem(DEVICE_KEY, d); } catch {}
+  document.documentElement.setAttribute("data-device", d);
+  document.querySelectorAll(".device-seg").forEach((b) =>
+    b.classList.toggle("is-active", b.dataset.device === d)
+  );
+  updatePhoneScale();
+  window.dispatchEvent(new CustomEvent("devicechange", { detail: { device: d } }));
+}
+window.addEventListener("resize", updatePhoneScale);
+
+// ---------- Разметка ----------
+function build() {
+  const page = document.querySelector(".page");
+  if (!page) return;
+  document.documentElement.setAttribute("data-mode", getMode());
+  document.documentElement.setAttribute("data-device", getDevice());
+
+  const layer = document.createElement("div");
+  layer.className = "mode-layer";
+  layer.innerHTML = `
+    <div class="mode-layer-inner">
+      <div class="seg-group device-group">
+        <button class="seg device-seg" data-device="desktop">Десктоп</button>
+        <button class="seg device-seg is-disabled" data-device="mobile" disabled>Мобайл</button>
+      </div>
+      <div class="seg-group mode-group">
+        ${MODES.map((m) => `<button class="seg mode-tab${m.disabled ? " is-disabled" : ""}" data-mode="${m.id}"${m.disabled ? " disabled" : ""}>${m.label}</button>`).join("")}
+      </div>
+    </div>`;
+
+  const shell = document.createElement("div");
+  shell.className = "app-shell";
+  if (page.classList.contains("phone")) shell.classList.add("shell-phone");
+  page.parentNode.insertBefore(layer, page);
+  page.parentNode.insertBefore(shell, page);
+  shell.appendChild(page);
+
+  layer.querySelectorAll(".mode-tab").forEach((t) =>
+    t.addEventListener("click", () => {
+      if (t.disabled || t.classList.contains("is-disabled")) return;
+      setMode(t.dataset.mode);
+      close();
+    })
+  );
+  layer.querySelectorAll(".device-seg").forEach((b) =>
+    b.addEventListener("click", () => {
+      if (b.disabled || b.classList.contains("is-disabled")) return;
+      setDevice(b.dataset.device); close();
+    })
+  );
+  shell.addEventListener("click", (e) => {
+    if (isOpen) { e.preventDefault(); e.stopPropagation(); close(); }
+  }, true);
+
+  let startMode = getMode();
+  if (MODES.find((m) => m.id === startMode)?.disabled) startMode = "asis";
+  setMode(startMode);
+  // Мобайл временно отключён — всегда десктоп.
+  setDevice("desktop");
+
+  // Градиент под табами показываем только когда они залипли у верха экрана.
+  // Через сентинел + IntersectionObserver (надёжнее слушателя scroll).
+  const tabsBar = document.querySelector(".tabs-bar");
+  if (tabsBar && tabsBar.parentNode) {
+    const sentinel = document.createElement("div");
+    sentinel.setAttribute("aria-hidden", "true");
+    sentinel.style.cssText = "height:0;margin:0;padding:0;";
+    tabsBar.parentNode.insertBefore(sentinel, tabsBar);
+    new IntersectionObserver(
+      ([e]) => tabsBar.classList.toggle("is-stuck", !e.isIntersecting),
+      { threshold: 0 }
+    ).observe(sentinel);
+  }
+}
+
+let isOpen = false;
+function open() {
+  if (isOpen) return;
+  isOpen = true;
+  document.documentElement.setAttribute("data-shell-open", "");
+}
+function close() {
+  if (!isOpen) return;
+  isOpen = false;
+  document.documentElement.removeAttribute("data-shell-open");
+  accUp = 0;
+}
+
+// ---------- Жест: свайп/скролл вверх, когда уже наверху ----------
+let accUp = 0;
+let accTimer = null;
+const THRESHOLD = 90;
+// В мобайле скроллится сам «телефон» (.page), в десктопе — окно.
+function scroller() {
+  return getDevice() === "mobile" ? document.querySelector(".phone-scroll") : null;
+}
+function atTop() {
+  const s = scroller();
+  if (s) return s.scrollTop <= 0;
+  return (window.scrollY || document.documentElement.scrollTop || 0) <= 0;
+}
+
+window.addEventListener("wheel", (e) => {
+  if (isOpen) {
+    e.preventDefault();
+    if (e.deltaY > 6) close();
+    return;
+  }
+  if (atTop() && e.deltaY < 0) {
+    accUp += -e.deltaY;
+    clearTimeout(accTimer);
+    accTimer = setTimeout(() => (accUp = 0), 220);
+    if (accUp > THRESHOLD) { accUp = 0; open(); }
+  } else {
+    accUp = 0;
+  }
+}, { passive: false });
+
+let touchStartY = null;
+window.addEventListener("touchstart", (e) => {
+  touchStartY = atTop() ? e.touches[0].clientY : null;
+}, { passive: true });
+window.addEventListener("touchmove", (e) => {
+  if (touchStartY == null) return;
+  const dy = e.touches[0].clientY - touchStartY;
+  if (isOpen) { if (dy < -40) close(); return; }
+  if (atTop() && dy > THRESHOLD) { touchStartY = null; open(); }
+}, { passive: true });
+
+window.addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", build);
+} else {
+  build();
+}
