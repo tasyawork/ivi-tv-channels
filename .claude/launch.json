@@ -1,11 +1,6 @@
 {
   "version": "0.0.1",
   "configurations": [
-    {
-      "name": "ivi-preview",
-      "runtimeExecutable": "python3",
-      "runtimeArgs": ["server.py"],
-      "port": 5180
-    }
+    { "name": "ivi-tv", "runtimeExecutable": "python3", "runtimeArgs": ["server.py"], "port": 5180 }
   ]
 }

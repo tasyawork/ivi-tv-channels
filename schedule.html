@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ru">
+<html lang="ru" data-mode="v3">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -14,14 +14,19 @@
     </button>
     <div class="sched-col">
       <div class="sched-sticky">
-        <h1 class="schedule-title" id="schTitle">Канал</h1>
-        <div class="day-tabs" id="dayTabs"></div>
+        <div class="sched-head">
+          <img class="sched-ch-logo" id="schLogo" alt="" hidden>
+          <h1 class="schedule-title" id="schTitle">Канал</h1>
+        </div>
+        <div class="day-tabs tz-filters" id="dayTabs"></div>
       </div>
-      <div class="full-epg" id="fullEpg"></div>
+      <div class="full-epg tz-list" id="fullEpg"></div>
       <div class="sched-about">
+        <h2 class="tz-about-title">О канале</h2>
         <p class="sched-about-text" id="schDesc"></p>
         <button class="sched-expand" id="schExpand">Развернуть</button>
       </div>
+      <section class="fav now-air" id="nowAir"></section>
     </div>
   </div>
   <script type="module" src="schedule.js"></script>

@@ -43,11 +43,15 @@ export function channelCover(ch, w = 672, h = 378) {
   return base ? `${base}/${w}x${h}/?q=85&mod=to_webp` : "";
 }
 
+// Список передач канала (живые данные): title, start, end, thumbs, restrict.
+export async function channelTelecasts(id) {
+  const r = await call("telecasts/v7/", { tvchannel: id });
+  return (r && r[0] && r[0].telecasts) || [];
+}
+
 // Передача «сейчас в эфире» на канале (живые данные).
 export async function nowOnChannel(id) {
-  const r = await call("telecasts/v7/", { tvchannel: id });
-  const tc = (r && r[0] && r[0].telecasts) || [];
-  return tc[0] || null;
+  return (await channelTelecasts(id))[0] || null;
 }
 
 export function telecastThumb(tc) {
@@ -77,6 +81,37 @@ export function contentThumb(item, w = 640, h = 360) {
 export function accessLabel(item) {
   const t = item.content_paid_types || [];
   return t.includes("AVOD") ? "Бесплатно" : "Подписка";
+}
+
+// ---------- Серии шоу-компиляции (реальные кадры эпизодов) ----------
+// Для блока «Все выпуски шоу» на экране телепрограммы канала.
+// fake=1 добавляет ещё не вышедшие серии; длительность — из localizations,
+// дата выхода — из ivi_release_info (может отсутствовать).
+const MONTHS = ["января", "февраля", "марта", "апреля", "мая", "июня",
+  "июля", "августа", "сентября", "октября", "ноября", "декабря"];
+function releaseDate(v) {
+  const iso = (v.ivi_release_info || {}).date_interval_min;
+  if (!iso) return "";
+  const [y, m, d] = iso.split("-").map(Number);
+  return m ? `${d} ${MONTHS[m - 1]}` : "";
+}
+// Горизонтальный постер шоу/сериала (16:9) — для обложки передачи,
+// чтобы она не дублировала кадр первой серии в ленте.
+export async function showPoster(id) {
+  const r = await call("compilationinfo/v7/", { id, fields: "id,posters" });
+  return pick((r || {}).posters, "Posters-3840x2160") || pick((r || {}).posters);
+}
+export async function showEpisodes(id, count = 8) {
+  const r = await call("videofromcompilation/v7/", {
+    id, fake: 1, from: 0, to: count - 1,
+    fields: "id,hru,title,episode,season,thumbs,localizations,ivi_release_info",
+  });
+  return (r || []).map((v) => ({
+    id: v.id, hru: v.hru, title: v.title, episode: v.episode,
+    still: pick(v.thumbs, "Thumb-640x480"),
+    duration: (v.localizations && v.localizations[0] && v.localizations[0].duration) || 0,
+    date: releaseDate(v),
+  }));
 }
 
 // ---------- Время ----------

@@ -7,18 +7,34 @@ import {
 // ---- Табы категорий (визуальные) ----
 // As is — 5 табов (HOME_TABS); Варианты 1 и 2 — полный список (TABS).
 const getMode = () => document.documentElement.getAttribute("data-mode") || "asis";
-const isV1like = () => getMode() === "v1" || getMode() === "v2";
+const variant = () => document.documentElement.getAttribute("data-variant") || "asis";
+const isV1like = () => ["v1", "v2", "v3"].includes(getMode());
+const isV2like = () => getMode() === "v2" || getMode() === "v3"; // v3 = копия v2
 const tabList = () => (isV1like() ? TABS : HOME_TABS);
 // Стрелка-шеврон для подсказок скролла подборок (макет JOP-0).
 const ARROW_SVG = '<svg viewBox="0 0 12 32" width="11" height="29"><path fill="currentColor" d="M11.607 14.626C12.131 15.461 12.131 16.539 11.607 17.374L2.425 32L0 30.352L9.01 16L0 1.648L2.425 0L11.607 14.626Z"/></svg>';
 const tabsEl = document.getElementById("tabs");
+let v1Tab = 0; // активная категория (индекс в tabList())
+let channels = []; // загруженные каналы (объявлено до renderTabs — нужно для v3-кластеров)
+// v3 — в таб добавляем мини-кластер из двух обложек каналов категории (макет L58).
+function tabThumbs(tag) {
+  const list = (tag ? filterByTag(channels, tag) : channels).slice(0, 1);
+  if (!list.length) return "";
+  // Передний постер — реальный; задний всегда заглушка-«загрузка».
+  return `<span class="tab-thumbs"><span class="tt-back tt-stub"></span><img class="tt-front" src="${channelThumb(list[0])}" alt=""></span>`;
+}
+// Вариант 4 — «живые» эмодзи-табы (макет WBH): текст + 3D-эмодзи в стеклянной пилюле.
+const V4_EMOJI = ["☄️", "❤️", "👀", "🍪", "🔥", "☄️", "🎭", "💎"];
 function renderTabs() {
+  const v4 = variant() === "v4";
+  const v3 = getMode() === "v3" && variant() !== "v2" && !v4; // v2 и v4 — свои табы
   tabsEl.innerHTML = tabList()
-    .map((t, i) => `<button class="tab${i === 0 ? " is-active" : ""}">${t.label}</button>`)
+    .map((t, i) => v4
+      ? `<button class="tab${i === v1Tab ? " is-active" : ""}">${t.label}<span class="tab-emoji">${V4_EMOJI[i % V4_EMOJI.length]}</span></button>`
+      : `<button class="tab${i === v1Tab ? " is-active" : ""}">${t.label}${v3 ? tabThumbs(t.tag) : ""}</button>`)
     .join("");
 }
 renderTabs();
-let v1Tab = 0; // активная категория (индекс в tabList())
 tabsEl.addEventListener("click", (e) => {
   const b = e.target.closest(".tab");
   if (!b) return;
@@ -48,7 +64,6 @@ function renderRail(id, tag, limit = 18) {
 }
 
 // ---- Загрузка каналов ----
-let channels = [];
 (async function init() {
   const rails = ["catFederal", "catEnt", "catMovies"];
   rails.forEach((id) => {
@@ -60,6 +75,7 @@ let channels = [];
     renderRail("catFederal", "федеральные каналы");
     renderRail("catEnt", "развлекательные каналы");
     renderRail("catMovies", "каналы с фильмами и сериалами");
+    renderTabs(); // теперь есть каналы — наполняем мини-кластеры табов (v3)
     renderV1();
   } catch (err) {
     document.getElementById("catFederal").innerHTML = `<div class="grid-empty">Не удалось загрузить каналы: ${err.message}</div>`;
@@ -73,8 +89,8 @@ const headingFor = (tag) => (TABS.find((t) => t.tag === tag) || {}).heading || "
 
 // Обзорная лента (вкладка «Все каналы»).
 const OVERVIEW = [
-  { kind: "gal", tag: "федеральные каналы" },
   { kind: "gal", tag: "развлекательные каналы" },
+  { kind: "gal", tag: "федеральные каналы" },
   { kind: "live" },
   { kind: "gal", tag: "каналы с фильмами и сериалами" },
   { kind: "show" },
@@ -112,7 +128,9 @@ function renderV1() {
   if (!body || !isV1like() || !channels.length) return;
   const tabs = tabList();
   const tab = tabs[v1Tab] || tabs[0];
-  const feed = tab.tag ? categoryFeed(tab.tag) : OVERVIEW;
+  // v3 — вверху обзорной ленты блок «Любимые каналы» (скриншот эфира, макет O7W).
+  const feed = tab.tag ? categoryFeed(tab.tag)
+    : (getMode() === "v3" ? [{ kind: "fav" }, ...OVERVIEW] : OVERVIEW);
   showSeq = 0;
   if (tileIO) tileIO.disconnect();
   body.innerHTML = feed.map((b) => {
@@ -123,8 +141,10 @@ function renderV1() {
     if (b.kind === "live") return `<div class="live-block"></div>`;
     if (b.kind === "show") return `<section class="gal show-gal"></section>`;
     if (b.kind === "topshows") return `<div class="topshows"></div>`;
+    if (b.kind === "fav") return `<section class="fav"></section>`;
     return "";
   }).join("");
+  body.querySelectorAll(".fav").forEach(fillFavs);
   body.querySelectorAll(".gal[data-cat]").forEach(fillGallery);
   body.querySelectorAll(".live-block").forEach(fillLiveBlock);
   body.querySelectorAll(".show-gal").forEach(fillShowGal);
@@ -139,7 +159,7 @@ function renderV1() {
   }, { rootMargin: "120px" });
   body.querySelectorAll("#v1Body .gal-cell").forEach((c) => tileIO.observe(c));
   // Вариант 2 — подсказка о горизонтальном скролле.
-  if (getMode() === "v2") body.querySelectorAll(".gal[data-cat]").forEach(addScrollHint);
+  if (isV2like()) body.querySelectorAll(".gal[data-cat]").forEach(addScrollHint);
 }
 
 // Категорийная лента: заголовок + 2 строки плиток каналов (по 5), 16:9.
@@ -151,7 +171,7 @@ function fillGallery(sec) {
   const base = filterByTag(channels, tag);
   if (!base.length) { sec.remove(); return; }
   // Вариант 2 — горизонтальный скролл в 2 этажа со ВСЕМИ каналами категории.
-  const isV2 = getMode() === "v2";
+  const isV2 = isV2like();
   const MIN = 10;
   let list;
   if (base.length >= MIN) {
@@ -168,28 +188,28 @@ function fillGallery(sec) {
   }
   sec.innerHTML = `
     <h2 class="gal-head">${heading} <span class="chev">›</span></h2>
-    <div class="gal-grid">
-      ${list.map((ch) => `
-        <div class="gal-cell" data-id="${ch.id}" data-paid="${ch.is_paid ? 1 : 0}">
-          <a class="gal-thumb" href="player.html?id=${ch.id}" title="${ch.title}">
-            <img class="gal-img" loading="lazy" src="${channelThumb(ch)}" alt="${ch.title}">
-            ${ch.is_paid ? '<span class="gal-pay" title="Платный канал">₽</span>' : ""}
-            <span class="gal-left" hidden></span>
-            <div class="gal-meta" aria-hidden="true">
-              <div class="gm-top">
-                <span class="gm-live"><i class="gm-dot"></i>в эфире</span>
-                <span class="gm-mins"></span>
-              </div>
-              <div class="gm-name">${ch.title}</div>
-              <div class="gm-prog"></div>
-              <span class="gm-watch">${ch.is_paid ? "Купить подписку" : "Смотреть"}</span>
-            </div>
-          </a>
-          <div class="gal-pop" aria-hidden="true"></div>
-        </div>`).join("")}
-    </div>
+    <div class="gal-grid">${list.map(galCell).join("")}</div>
     <div class="gal-less" aria-hidden="true"><span class="gal-more-arrow gal-arrow-left">${ARROW_SVG}</span></div>
     <div class="gal-more" aria-hidden="true"><span class="gal-more-arrow">${ARROW_SVG}</span></div>`;
+}
+
+// Плитка канала с мета-оверлеем при наведении (общая для галерей и «Любимых каналов»).
+function galCell(ch) {
+  return `
+    <div class="gal-cell" data-id="${ch.id}" data-paid="${ch.is_paid ? 1 : 0}">
+      <a class="gal-thumb" href="player.html?id=${ch.id}" title="${ch.title}">
+        <img class="gal-img" loading="lazy" src="${channelThumb(ch)}" alt="${ch.title}">
+        ${ch.is_paid ? '<span class="gal-pay" title="Платный канал">₽</span>' : ""}
+        <span class="gal-left" hidden></span>
+        <div class="gal-meta" aria-hidden="true">
+          <div class="gm-top"><span class="gm-live"><i class="gm-dot"></i>в эфире</span><span class="gm-mins"></span></div>
+          <div class="gm-name">${ch.title}</div>
+          <div class="gm-prog"></div>
+          <span class="gm-watch">${ch.is_paid ? "Купить подписку" : "Смотреть"}</span>
+        </div>
+      </a>
+      <div class="gal-pop" aria-hidden="true"></div>
+    </div>`;
 }
 
 // Подсказка-градиент справа с стрелкой: «есть ещё каналы правее» (только v2).
@@ -204,8 +224,9 @@ function addScrollHint(sec) {
   const sync = () => {
     const cell = grid.querySelector(".gal-cell");
     if (cell) {
+      const rows = sec.classList.contains("fav-gal") ? 1 : 2; // «Любимые каналы» — один этаж
       const sRect = sec.getBoundingClientRect(), cRect = cell.getBoundingClientRect();
-      const top = (cRect.top - sRect.top) + "px", h = (cRect.height * 2 + 8) + "px";
+      const top = (cRect.top - sRect.top) + "px", h = (cRect.height * rows + (rows === 2 ? 8 : 0)) + "px";
       more.style.top = top; more.style.height = h;
       if (less) { less.style.top = top; less.style.height = h; }
     }
@@ -218,6 +239,23 @@ function addScrollHint(sec) {
   grid.addEventListener("scroll", sync, { passive: true });
   window.addEventListener("resize", sync);
   setTimeout(sync, 300);
+}
+
+// «Любимые каналы» — такая же подборка каналов, как галереи ниже, но ОДИН этаж
+// с горизонтальным скроллом; мета-оверлей появляется при наведении на постер.
+const FAV_LIMIT = 10;
+function fillFavs(el) {
+  // Необычные, не самые популярные каналы (пропускаем первые ~12 топовых).
+  const pool = channels.slice(12);
+  const list = (pool.length >= FAV_LIMIT ? pool : channels).slice(0, FAV_LIMIT);
+  if (!list.length) { el.remove(); return; }
+  el.classList.add("gal", "fav-gal");
+  el.innerHTML = `
+    <h2 class="gal-head">Любимые каналы <span class="chev">›</span></h2>
+    <div class="gal-grid">${list.map(galCell).join("")}</div>
+    <div class="gal-less" aria-hidden="true"><span class="gal-more-arrow gal-arrow-left">${ARROW_SVG}</span></div>
+    <div class="gal-more" aria-hidden="true"><span class="gal-more-arrow">${ARROW_SVG}</span></div>`;
+  addScrollHint(el);
 }
 
 // «Осталось N минут» до конца текущей передачи (ленивая подгрузка).
@@ -239,7 +277,7 @@ const loadNow = (id) => {
 //  • мета-оверлей поверх постера (Вариант 2, техника как в референсе),
 //  • угловой чип «осталось N минут».
 async function fillTile(cell) {
-  if (!cell || cell.dataset.ready) return;
+  if (!cell || cell.dataset.ready || !cell.dataset.id) return; // шоу-плитки (v3) без канала пропускаем
   cell.dataset.ready = "1";
   const pop = cell.querySelector(".gal-pop");
   const prog = cell.querySelector(".gm-prog");
@@ -250,23 +288,23 @@ async function fillTile(cell) {
     const tc = await loadNow(+cell.dataset.id);
     if (!tc) { if (pop) pop.innerHTML = dim("Нет данных об эфире"); if (prog) prog.innerHTML = '<div class="gm-row gm-dim">Нет данных об эфире</div>'; return; }
     const base = tc.end && new Date(tc.end) > new Date(tc.start) ? tc.end : tc.start;
-    const next = demoSchedule(base, tc.restrict ?? 16, 2);
+    const next = demoSchedule(base, tc.restrict ?? 16, 3);
     const nowT = mskTime(tc.start);
     const rows = [[nowT, tc.title, true], ...next.map((r) => [r.time, r.title, false])];
     // Поповер (Вариант 1): время + пульсирующая точка у текущей.
     if (pop) pop.innerHTML = rows.map(([t, n, now]) =>
       `<div class="gal-pop-row${now ? " is-now" : ""}"><span class="gp-t">${t}</span><span class="gp-dot"></span><span class="gp-n">${n}</span></div>`).join("");
-    // Минуты до конца текущей передачи.
+    // Угловой чип «осталось N минут» (Вариант 1). В мета-оверлее чип сверху не показываем.
     const min = tc.end ? Math.round((new Date(tc.end) - Date.now()) / 60000) : 0;
     const leftTxt = (min > 0 && min < 600) ? `ещё ${min} ${pluralMin(min)}` : "";
     if (chip && leftTxt) { chip.textContent = leftTxt; chip.hidden = false; }
-    // Мета-оверлей (Вариант 2): минуты — в правом верхнем углу; «сейчас» и
-    // «следующая» в одинаковом формате (время слева + название).
-    const mins = cell.querySelector(".gm-mins");
-    if (mins && leftTxt) mins.textContent = leftTxt;
+    // Мета-оверлей: под названием текущей передачи — таймлайн, справа «ещё 5 минут».
+    // Показываем 3 передачи: текущая + 2 следующие.
     if (prog) prog.innerHTML = `
       <div class="gm-row gm-now"><span class="gm-t">${nowT}</span><span class="gm-ttl">${tc.title}</span></div>
-      <div class="gm-row gm-next"><span class="gm-t">${next[0].time}</span><span class="gm-ttl">${next[0].title}</span></div>`;
+      <div class="gm-bar"><span class="gm-track"><span class="gm-fill"></span></span><span class="gm-barleft">ещё 5 минут</span></div>
+      <div class="gm-row gm-next"><span class="gm-t">${next[0].time}</span><span class="gm-ttl">${next[0].title}</span></div>
+      <div class="gm-row gm-next"><span class="gm-t">${next[1].time}</span><span class="gm-ttl">${next[1].title}</span></div>`;
   } catch {
     if (pop) pop.innerHTML = dim("Эфир недоступен");
   }
@@ -327,6 +365,28 @@ const SB_CHIPS = [
   { t: "Лучшие моменты", b: "6NP09WCJCMTZN6VJ1B3TGPS3S2.png", f: "5GJ5KAEH15BB5MGACYBYE7VWH3.png" },
   { t: "Сетка матчей", b: "70JMF27X69683XGVBPQEPC2AKZ.png", f: "17BRTY9JY237M3Z5JDZH1QMMC0.png" },
 ];
+// Контролы + подвал плеера (счёт и лого МАТЧ запечены в кадр) — общий кусок.
+const SB_PLAYER_INNER = `
+      <div class="sb-controls">
+        <button class="sb-ctrl sb-pause" aria-label="Пауза"><svg viewBox="0 0 34 42" width="28" height="34"><path fill="#fff" d="M6.482 0.158C8.431-0.030 9.405-0.124 10.408 0.305C11.213 0.649 12.058 1.416 12.478 2.183C13.000 3.140 13.000 4.299 13.000 6.616L13.000 35.181C13.000 37.639 13.000 38.868 12.476 39.826C12.043 40.616 11.231 41.352 10.402 41.705C9.397 42.132 8.326 42.027 6.185 41.816C5.421 41.741 4.670 41.635 3.913 41.489C2.795 41.273 2.236 41.165 1.597 40.723C1.105 40.384 0.553 39.715 0.313 39.168C0.000 38.457 0.000 37.733 0.000 36.286L0.000 5.937C0.000 4.328 0.000 3.523 0.321 2.803C0.583 2.218 1.106 1.596 1.639 1.239C2.294 0.800 2.978 0.682 4.345 0.446C5.064 0.322 5.769 0.227 6.482 0.158ZM23.592 0.305C24.595-0.124 25.569-0.030 27.518 0.158C28.231 0.227 28.936 0.322 29.655 0.446C31.022 0.682 31.706 0.800 32.361 1.239C32.894 1.596 33.417 2.218 33.679 2.803C34.000 3.523 34.000 4.328 34.000 5.937L34.000 36.286C34.000 37.733 34.000 38.457 33.688 39.168C33.447 39.715 32.895 40.384 32.403 40.723C31.764 41.165 31.205 41.273 30.087 41.489C29.330 41.635 28.579 41.741 27.815 41.816C25.674 42.027 24.603 42.132 23.598 41.705C22.769 41.352 21.957 40.616 21.524 39.826C21.000 38.868 21.000 37.639 21.000 35.181L21.000 6.616C21.000 4.299 21.000 3.140 21.522 2.183C21.942 1.416 22.787 0.649 23.592 0.305Z"/></svg></button>
+        <button class="sb-ctrl sb-mute" aria-label="Звук"><svg viewBox="0 0 20 18" width="20" height="18"><path fill="#fff" d="M7.367 0.719C7.827 0.258 8.451 0.000 9.102 0.000C10.024 0.000 10.970 0.546 11.254 1.583C11.577 2.765 12.000 5.062 12.000 9.000C12.000 12.938 11.577 15.235 11.254 16.417C10.970 17.454 10.024 18.000 9.102 18.000C8.451 18.000 7.827 17.742 7.367 17.281L4.746 14.660C4.599 14.513 4.409 14.415 4.203 14.381L2.690 14.129C1.890 13.995 1.061 13.512 0.688 12.609C0.367 11.831 0.000 10.594 0.000 9.000C0.000 7.406 0.367 6.169 0.688 5.391C1.061 4.488 1.890 4.005 2.690 3.871L4.203 3.619C4.409 3.585 4.599 3.487 4.746 3.340L7.367 0.719Z"/><path fill="#fff" d="M14.293 6.293C14.683 5.902 15.317 5.902 15.707 6.293L17.000 7.586L18.293 6.293C18.683 5.902 19.317 5.902 19.707 6.293C20.098 6.683 20.098 7.317 19.707 7.707L18.414 9.000L19.707 10.293C20.098 10.683 20.098 11.317 19.707 11.707C19.317 12.098 18.683 12.098 18.293 11.707L17.000 10.414L15.707 11.707C15.317 12.098 14.683 12.098 14.293 11.707C13.902 11.317 13.902 10.683 14.293 10.293L15.586 9.000L14.293 7.707C13.902 7.317 13.902 6.683 14.293 6.293Z"/></svg></button>
+      </div>
+      <div class="sb-foot">
+        <span class="sb-flags">
+          <img class="sb-flag sb-flag-a" src="${PA}33NS6THVVAF523QHQ5823M4W8W.png" alt="">
+          <img class="sb-flag sb-flag-b" src="${PA}307PFE7S4129KTGSE6NF6CJ6NF.png" alt="">
+        </span>
+        <span class="sb-title">Норвегия — Англия</span>
+        <span class="sb-online"><svg class="sb-bolt" viewBox="0 0 12.5 16" width="11" height="14"><path fill="#fff" d="M6.625 5.838L12.108 5.838C12.427 5.838 12.610 6.150 12.427 6.418L5.986 15.828C5.757 16.140 5.300 16.006 5.300 15.605L5.300 10.164L0.366 10.164C0.092 10.164-0.090 9.852 0.047 9.585L5.575 0.175C5.757-0.137 6.260-0.003 6.305 0.353L6.625 5.838Z"/></svg>720К онлайн</span>
+      </div>`;
+
+// Чипы спортивного блока в Варианте 3 (4 шт., вертикальная колонка, макет L58).
+const SB_CHIPS_V3 = [
+  { t: "Матчи в эфире", b: SB_CHIPS[0].b, f: SB_CHIPS[0].f, active: true },
+  { t: "Обзоры матчей", b: SB_CHIPS[2].b, f: SB_CHIPS[2].f },
+  { t: "Лучшие моменты", b: SB_CHIPS[3].b, f: SB_CHIPS[3].f },
+];
+
 function fillLiveBlock(el) {
   if (!el) return;
   const chip = (c) => `
@@ -337,6 +397,17 @@ function fillLiveBlock(el) {
         <img class="sb-th-front" src="${PA}${c.f}" alt="">
       </span>
     </div>`;
+  // Вариант 3 — плеер слева, справа колонка: лого FIFA + 4 чипа (макет L58).
+  if (getMode() === "v3") {
+    el.innerHTML = `
+      <div class="sb-backdrop" style="background-image:linear-gradient(180deg,#000 -27%,#0000 71%),url(${PA}5G4MKA7B61T87JGZFYQFJFJAM7.png)"></div>
+      <div class="sb-player" style="background-image:linear-gradient(180deg,#0000 60%,#0000007a 100%),url(${PA}3GM6SA7B2XZR7GHEEAQEJ3ADH7.png)">${SB_PLAYER_INNER}</div>
+      <div class="sb-side">
+        <div class="sb-fifa-lg" style="background-image:url(${PA}5NCKFXXAC8PF1BV347GT8Q06TA.png)"></div>
+        <div class="sb-chips-v">${SB_CHIPS_V3.map(chip).join("")}</div>
+      </div>`;
+    return;
+  }
   el.innerHTML = `
     <div class="sb-backdrop" style="background-image:linear-gradient(180deg,#000 -27%,#0000 71%),url(${PA}5G4MKA7B61T87JGZFYQFJFJAM7.png)"></div>
     <div class="sb-top">
@@ -405,6 +476,8 @@ function showCard(it, cls, w, h, i) {
 function fillShowGal(el) {
   if (!el) return;
   const g = SHOW_GALS[showSeq % SHOW_GALS.length]; showSeq++;
+  // Вариант 3 — галерея шоу свёрстана как телеканалы (2 этажа 16:9 со скроллом).
+  if (getMode() === "v3") return fillShowGalAsChannels(el, g.title);
   // Вариант 2 — ряды со скроллом вправо (больше постеров), v1 — сетка 3+5.
   const v2 = getMode() === "v2";
   const nBig = v2 ? 6 : 3, nSmall = v2 ? 12 : 5;
@@ -429,6 +502,29 @@ function fillShowGal(el) {
     el.querySelector(".show-strip").innerHTML = small.map((it, i) => showCard(it, "show-small", 480, 270, i + nBig)).join("");
     el.dispatchEvent(new CustomEvent("showloaded"));
   }).catch((err) => { el.querySelector(".show-hero").innerHTML = `<div class="reco-error">Не удалось загрузить: ${err.message}</div>`; });
+}
+
+// Вариант 3: шоу верстаются как телеканалы — та же .gal-grid (2 этажа 16:9 + скролл).
+function fillShowGalAsChannels(el, title) {
+  el.innerHTML = `
+    <h2 class="gal-head">${title} <span class="chev">›</span></h2>
+    <div class="gal-grid">${Array.from({ length: 12 }, () => '<div class="gal-cell"><div class="gal-thumb"></div></div>').join("")}</div>
+    <div class="gal-less" aria-hidden="true"><span class="gal-more-arrow gal-arrow-left">${ARROW_SVG}</span></div>
+    <div class="gal-more" aria-hidden="true"><span class="gal-more-arrow">${ARROW_SVG}</span></div>`;
+  Promise.all([
+    collection("realiti-shou", { to: 20 }).catch(() => []),
+    collection("popular-now-tvshows", { to: 30 }).catch(() => []),
+  ]).then(([a, b]) => {
+    const seen = new Set(), items = [];
+    [...a, ...b].forEach((it) => { const k = it.id || it.hru; if (!seen.has(k)) { seen.add(k); items.push(it); } });
+    el.querySelector(".gal-grid").innerHTML = items.slice(0, 16).map((it) => `
+      <div class="gal-cell">
+        <a class="gal-thumb" href="https://www.ivi.ru/watch/${it.hru || it.id}" target="_blank" rel="noopener" title="${it.title}">
+          <img class="gal-img" loading="lazy" src="${contentThumb(it, 760, 428)}" alt="${it.title}">
+        </a>
+      </div>`).join("");
+    addScrollHint(el);
+  }).catch((err) => { el.querySelector(".gal-grid").innerHTML = `<div class="reco-error">Не удалось загрузить: ${err.message}</div>`; });
 }
 
 // Градиенты-подсказки скролла для галереи шоу (как у каналов) — по рядам show-rows.

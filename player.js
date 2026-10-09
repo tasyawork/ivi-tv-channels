@@ -1,7 +1,7 @@
 import {
   tvChannels, channelLogo, channelThumb, nowOnChannel, telecastThumb,
   mskTime, PLAYER_TABS, filterByTag, demoSchedule,
-  collection, poster, accessLabel,
+  collection, poster, accessLabel, contentThumb,
 } from "./ivi-api.js";
 
 const params = new URLSearchParams(location.search);
@@ -125,6 +125,81 @@ function syncEpgHeight() {
   if (p && e) e.style.height = p.clientHeight + "px";
 }
 
+// ---- Полноэкранная «Программа передач канала» (мобайл, макет TCZ) ----
+// Открывается поверх плеера по кнопке «Телепрограмма ›».
+const TVP_WD = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"];
+const TVP_LIVE = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="2.4" fill="currentColor" stroke="none"/><path d="M16.9 7.1a7 7 0 010 9.8M7.1 16.9a7 7 0 010-9.8"/></svg>';
+const TVP_GENRE = "Телекомедия, сезон 6";
+let tvpOverlay = null;
+function tvpDates() {
+  const today = new Date();
+  return Array.from({ length: 5 }, (_, i) => {
+    const d = new Date(today); d.setDate(today.getDate() + i);
+    const dd = `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const label = i === 0 ? `сегодня, ${dd}` : i === 1 ? `завтра, ${dd}` : `${TVP_WD[d.getDay()]}, ${dd}`;
+    return `<button class="tvp-date${i === 0 ? " is-active" : ""}">${label}</button>`;
+  }).join("");
+}
+function tvpRow(time, title, now) {
+  return `<div class="tvp-row${now ? " is-now" : ""}">
+    <span class="tvp-time">${time}</span>
+    <div class="tvp-main"><div class="tvp-ttl">${title}</div><div class="tvp-sub">${TVP_GENRE}</div></div>
+    ${now ? `<span class="tvp-live">${TVP_LIVE}</span>` : ""}
+  </div>`;
+}
+function tvpRows(tc) {
+  const restrict = tc?.restrict ?? 16;
+  const now = tc ? tvpRow(mskTime(tc.start), tc.title, true) : "";
+  const rest = demoSchedule(tc?.end, restrict, 12).map((r) => tvpRow(r.time, r.title, false)).join("");
+  return now + rest;
+}
+function openTvProg() {
+  if (!tvpOverlay) {
+    tvpOverlay = document.createElement("div");
+    tvpOverlay.className = "tvprog-overlay";
+    tvpOverlay.innerHTML = `
+      <div class="tvprog-sheet">
+        <button class="tvprog-close" aria-label="Закрыть">✕</button>
+        <h2 class="tvprog-title"></h2>
+        <div class="tvprog-dates"></div>
+        <div class="tvprog-list"></div>
+        <div class="tvprog-about"><p class="tvprog-desc"></p><button class="tvprog-expand">Развернуть</button></div>
+      </div>`;
+    (document.querySelector(".page") || document.body).appendChild(tvpOverlay);
+    tvpOverlay.addEventListener("click", (e) => {
+      if (e.target === tvpOverlay || e.target.closest(".tvprog-close")) closeTvProg();
+    });
+    tvpOverlay.querySelector(".tvprog-dates").addEventListener("click", (e) => {
+      const b = e.target.closest(".tvp-date"); if (!b) return;
+      tvpOverlay.querySelectorAll(".tvp-date").forEach((x) => x.classList.toggle("is-active", x === b));
+    });
+    tvpOverlay.querySelector(".tvprog-expand").addEventListener("click", (e) => {
+      const open = tvpOverlay.querySelector(".tvprog-desc").classList.toggle("is-expanded");
+      e.target.textContent = open ? "Свернуть" : "Развернуть";
+    });
+  }
+  tvpOverlay.querySelector(".tvprog-title").textContent = `Программа передач канала ${channel?.title || ""}`;
+  tvpOverlay.querySelector(".tvprog-dates").innerHTML = tvpDates();
+  tvpOverlay.querySelector(".tvprog-desc").textContent = $("chAbout")?.textContent || "";
+  tvpOverlay.querySelector(".tvprog-list").innerHTML = "";
+  loadNow(channel.id)
+    .then((tc) => { tvpOverlay.querySelector(".tvprog-list").innerHTML = tvpRows(tc); })
+    .catch(() => { tvpOverlay.querySelector(".tvprog-list").innerHTML = tvpRows(null); });
+  tvpOverlay.classList.add("is-open");
+}
+function closeTvProg() { tvpOverlay?.classList.remove("is-open"); }
+
+// Кликабельный заголовок «Телепрограмма ›» (мобайл) открывает оверлей.
+(function setupTvProgHead() {
+  const aside = document.querySelector(".epg");
+  if (!aside || aside.querySelector(".epg-head")) return;
+  const head = document.createElement("button");
+  head.className = "epg-head";
+  head.innerHTML = `Телепрограмма <span class="chev">›</span>`;
+  head.addEventListener("click", openTvProg);
+  aside.insertBefore(head, aside.firstChild);
+})();
+
 // ---- Отрисовка выбранного канала ----
 async function renderChannel() {
   const crumb = document.getElementById("crumbChannel");
@@ -204,14 +279,12 @@ $("playBtn").addEventListener("click", (e) => {
 
 // ---- Реальные данные Иви: ряд рекомендаций ----
 const reco = $("reco");
-reco.innerHTML = Array.from({ length: 7 }, () => '<div class="poster-card is-loading"><span class="poster-img"></span></div>').join("");
-collection("popular-now-tvshows", { to: 13 })
+reco.innerHTML = Array.from({ length: 10 }, () => '<a class="hp-card is-loading"><span class="hp-img"></span></a>').join("");
+collection("popular-now-tvshows", { to: 19 })
   .then((items) => {
     reco.innerHTML = items.map((it) => `
-      <a class="poster-card" href="https://www.ivi.ru/watch/${it.hru || it.id}" target="_blank" rel="noopener">
-        <span class="poster-img">${poster(it) ? `<img loading="lazy" src="${poster(it)}" alt="">` : ""}</span>
-        <span class="poster-name">${it.title}</span>
-        <span class="poster-access">${accessLabel(it)}</span>
+      <a class="hp-card" href="https://www.ivi.ru/watch/${it.hru || it.id}" target="_blank" rel="noopener" title="${it.title}">
+        <span class="hp-img">${contentThumb(it, 480, 270) ? `<img loading="lazy" src="${contentThumb(it, 480, 270)}" alt="${it.title}">` : ""}</span>
       </a>`).join("");
   })
   .catch((err) => { reco.innerHTML = `<div class="reco-error">Не удалось загрузить данные Иви: ${err.message}</div>`; });

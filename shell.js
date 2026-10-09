@@ -5,9 +5,10 @@
 
 const MODES = [
   { id: "asis", label: "As is", sub: "Как сейчас работает сервис" },
-  { id: "v1", label: "Вариант 1", sub: "Гипотеза A" },
+  { id: "v1", label: "Вариант 1", sub: "Гипотеза A", disabled: true },
   { id: "v2", label: "Вариант 2", sub: "Гипотеза B" },
-  { id: "v3", label: "Вариант 3", sub: "Гипотеза C", disabled: true },
+  { id: "v3", label: "Вариант 3", sub: "Гипотеза C" },
+  { id: "v4", label: "Вариант 4", sub: "Гипотеза D" },
 ];
 
 // ---------- Режим прототипа ----------
@@ -15,7 +16,10 @@ const KEY = "ivi-proto-mode";
 const getMode = () => { try { return localStorage.getItem(KEY) || "asis"; } catch { return "asis"; } };
 function setMode(id) {
   try { localStorage.setItem(KEY, id); } catch {}
-  document.documentElement.setAttribute("data-mode", id);
+  // Варианты 1/2/3 используют единый макет Варианта 3 (data-mode="v3");
+  // реальный выбор держим в data-variant — через него v2 получает свои отличия.
+  document.documentElement.setAttribute("data-mode", id === "asis" ? "asis" : "v3");
+  document.documentElement.setAttribute("data-variant", id);
   document.querySelectorAll(".mode-tab").forEach((t) =>
     t.classList.toggle("is-active", t.dataset.mode === id)
   );
@@ -50,7 +54,8 @@ window.addEventListener("resize", updatePhoneScale);
 function build() {
   const page = document.querySelector(".page");
   if (!page) return;
-  document.documentElement.setAttribute("data-mode", getMode());
+  document.documentElement.setAttribute("data-mode", getMode() === "asis" ? "asis" : "v3");
+  document.documentElement.setAttribute("data-variant", getMode());
   document.documentElement.setAttribute("data-device", getDevice());
 
   const layer = document.createElement("div");
@@ -93,8 +98,7 @@ function build() {
   let startMode = getMode();
   if (MODES.find((m) => m.id === startMode)?.disabled) startMode = "asis";
   setMode(startMode);
-  // Мобайл временно отключён — всегда десктоп.
-  setDevice("desktop");
+  setDevice("desktop"); // мобайл временно скрыт
 
   // Градиент под табами показываем только когда они залипли у верха экрана.
   // Через сентинел + IntersectionObserver (надёжнее слушателя scroll).
@@ -108,6 +112,25 @@ function build() {
       ([e]) => tabsBar.classList.toggle("is-stuck", !e.isIntersecting),
       { threshold: 0 }
     ).observe(sentinel);
+  }
+
+  // Градиент-растворение по краям табов, когда их можно скроллить влево/вправо.
+  // Оверлеи-градиенты на .tabs-bar (не маска на #tabs — та обрезала бы выпадающий
+  // список дат, у которого position: fixed внутри #tabs).
+  const tabsScroll = document.getElementById("tabs");
+  if (tabsScroll && tabsBar) {
+    const fadeL = document.createElement("div"); fadeL.className = "tabs-fade l";
+    const fadeR = document.createElement("div"); fadeR.className = "tabs-fade r";
+    tabsBar.append(fadeL, fadeR);
+    const syncFade = () => {
+      fadeL.classList.toggle("is-on", tabsScroll.scrollLeft > 2);
+      fadeR.classList.toggle("is-on", tabsScroll.scrollLeft + tabsScroll.clientWidth < tabsScroll.scrollWidth - 2);
+    };
+    tabsScroll.addEventListener("scroll", syncFade, { passive: true });
+    window.addEventListener("resize", syncFade);
+    window.addEventListener("modechange", () => setTimeout(syncFade, 0));
+    new MutationObserver(syncFade).observe(tabsScroll, { childList: true });
+    syncFade();
   }
 }
 
