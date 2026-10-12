@@ -64,14 +64,20 @@ function tabThumbs(tag) {
   // Передний постер — реальный; задний всегда заглушка-«загрузка».
   return `<span class="tab-thumbs"><span class="tt-back tt-stub"></span><img class="tt-front" src="${channelThumb(list[0])}" alt=""></span>`;
 }
-// Вариант 4 — табы один в один с экраном «ТВ онлайн»: эмодзи-пилюли, без таба даты.
-const V4_EMOJI = ["☄️", "❤️", "👀", "🍪", "🔥", "☄️", "🎭", "💎"];
+// Вариант 4 — табы один в один с экраном «ТВ онлайн»: пилюли с 3D-иконками из ассетов макета.
+const PA = "https://app.paper.design/file-assets/01M45XC9MW0NZTHRFA799G9DJ7/";
+const V4_ICONS = [
+  "7EVWJDB6PBT28KDSSC3PH96E1S.png", "0RDPVAP149TBKN1HCEWFY22TMZ.png", "2XC1VP5CCM1FV3BE4FZAMYSRXE.png",
+  "1EYZ403CGV9K2JCKV0K6N3690X.png", "6B5AEQ8DSPK6GB6CK57HZKW888.png", "7EVWJDB6PBT28KDSSC3PH96E1S.png",
+  "2ERF6A2CP700JTDER437N3ZP1X.png", "32KXEE3KPBB0PJNHY4N6BF602N.png",
+];
+const v4Icon = (i) => `<span class="tab-emoji"><img src="${PA}${V4_ICONS[i % V4_ICONS.length]}" alt="" loading="lazy"></span>`;
 function renderTabs() {
   const v4 = variant() === "v4";
   const v3 = getMode() === "v3" && variant() !== "v2" && !v4;
   tabsEl.innerHTML = dateTab() + tabList()
     .map((t, i) => v4
-      ? `<button class="tab${i === activeTab ? " is-active" : ""}" data-i="${i}">${t.label}<span class="tab-emoji">${V4_EMOJI[i % V4_EMOJI.length]}</span></button>`
+      ? `<button class="tab${i === activeTab ? " is-active" : ""}" data-i="${i}">${t.label}${v4Icon(i)}</button>`
       : `<button class="tab${i === activeTab ? " is-active" : ""}" data-i="${i}">${t.label}${v3 ? tabThumbs(t.tag) : ""}</button>`)
     .join("");
 }
@@ -321,6 +327,10 @@ function showPop(row) {
   p.style.top = "50%";
   p.style.transform = "translateY(-50%)";
   p.classList.add("is-open");
+  // Перезапускаем анимацию появления на каждый показ (в т.ч. при смене передачи).
+  p.style.animation = "none";
+  void p.offsetWidth;
+  p.style.animation = "";
 }
 const realRow = (r) => r && !["…", "—", ""].includes(r.querySelector(".sched-title")?.textContent.trim());
 // Поповер о передаче открывается по КЛИКУ (а не по наведению).

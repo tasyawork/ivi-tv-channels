@@ -327,9 +327,9 @@ html[data-mode="v3"] .sched-row.is-past .sched-title { color: var(--tx-32); }
 /* Брендовый овальный чип «есть на Иви» справа от названия (v3) */
 .sched-ivi {
   flex-shrink: 0; align-self: center;
-  padding: 1px 6px; border-radius: 100px;
+  padding: 2px 8px; border-radius: 100px;
   background: #F30745; color: #fff;
-  font-size: 9px; line-height: 13px; font-weight: 600; white-space: nowrap;
+  font-size: 11px; line-height: 15px; font-weight: 600; white-space: nowrap;
 }
 /* Вариант 3 — таймлайн эфира прямо на постере снизу: слева прошедшее (малиновым), справа остаток */
 .prog-line { display: none; }
@@ -344,14 +344,21 @@ html[data-mode="v3"] .prog-line:not([hidden]) {
   position: fixed; z-index: 120; width: 320px; display: none; flex-direction: column;
   background: #1c1c1e; border-radius: 16px; overflow: hidden; box-shadow: 0 20px 50px #000a;
 }
-.sched-pop.is-open { display: flex; }
+.sched-pop.is-open { display: flex; animation: schedPopIn 0.42s cubic-bezier(0.24, 1.34, 0.38, 1); }
+/* Появление карточки — «rise + settle» с лёгким пружинным перелётом */
+@keyframes schedPopIn {
+  0%   { opacity: 0; transform: translateY(calc(-50% + 12px)) scale(0.96); }
+  55%  { opacity: 1; }
+  100% { opacity: 1; transform: translateY(-50%) scale(1); }
+}
 /* Затемнение фона вокруг карточки, пока открыт поповер (без блюра);
    наведённая карточка канала и поповер не затемняются и выделяются. */
 .sched-dim {
   position: fixed; inset: 0; z-index: 100; display: none;
   background: rgba(0, 0, 0, 0.55);
 }
-.sched-dim.is-open { display: block; }
+.sched-dim.is-open { display: block; animation: schedDimIn 0.26s ease; }
+@keyframes schedDimIn { from { opacity: 0; } to { opacity: 1; } }
 .card.is-raised { position: relative; z-index: 110; box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6); }
 .sp-cover { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: #000; }
 .sp-body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 10px; }
@@ -659,7 +666,8 @@ html[data-variant="v4"] .tab.is-active {
   background: linear-gradient(167deg, #ffffff66 -32%, #ffffff3d 20%, #ffffff3d 80%, #ffffff66 132%);
 }
 html[data-variant="v4"] .tab.is-active::after { display: none; } /* без подчёркивания — вид пилюли */
-html[data-variant="v4"] .tab-emoji { font-size: 26px; line-height: 1; flex-shrink: 0; }
+html[data-variant="v4"] .tab-emoji { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; flex-shrink: 0; }
+html[data-variant="v4"] .tab-emoji img { width: 28px; height: 28px; object-fit: contain; display: block; }
 /* Таб выбора дня — в том же стиле стеклянной пилюли */
 html[data-variant="v4"] .tab-date-btn {
   height: 48px; padding: 0 20px; border-radius: 999px;
@@ -689,30 +697,23 @@ html[data-variant="v2"] .tab-date-btn {
 }
 html[data-variant="v2"] .tab-date:hover .tab-date-btn,
 html[data-variant="v2"] .tab-date:focus-within .tab-date-btn { background: rgba(255, 255, 255, 0.2); }
-/* Переключатель секций: иконки слева + больше расстояние между пунктами */
-html[data-variant="v2"][data-mode="v3"] .section-switch { gap: 48px; }
-/* Вариант 2 — заголовки переключателя секций меньше */
-html[data-variant="v2"] .sw-item { display: inline-flex; align-items: center; gap: 12px; font-size: 28px; line-height: 32px; }
-html[data-variant="v2"] .sw-item::before { width: 26px; height: 26px; }
-html[data-variant="v2"] .sw-item::before {
-  content: ""; width: 34px; height: 34px; flex-shrink: 0; background: currentColor;
-  -webkit-mask: var(--ic) center / contain no-repeat; mask: var(--ic) center / contain no-repeat;
-}
-html[data-variant="v2"] .sw-item:first-child { --ic: url("icons/sw-tv.svg"); }
-html[data-variant="v2"] .sw-item:last-child { --ic: url("icons/sw-list.svg"); }
 
 /* ---- Переключатель секций в шапке: «ТВ онлайн · Программа передач» (v1/v2) ---- */
 .section-switch { display: none; }
 html:is([data-mode="v1"],[data-mode="v2"],[data-mode="v3"]) .page-title { display: none; }
 html:is([data-mode="v1"],[data-mode="v2"],[data-mode="v3"]) .section-switch {
-  display: flex; align-items: baseline; gap: 36px;
+  display: flex; align-items: center; gap: 36px;
 }
+/* По макету XQL: иконка 32px + текст 36/44 medium; активный — белый, неактивный — 0.3 */
 .sw-item {
-  font-size: 38px; line-height: 44px; font-weight: 800; letter-spacing: -.015em;
-  color: #ffffff3d; transition: color .15s ease; /* неактивный — тусклее (~24%) */
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 36px; line-height: 44px; font-weight: 500; letter-spacing: -0.016em;
+  color: #fff; opacity: 0.3; transition: opacity .15s ease;
 }
-.sw-item:hover { color: var(--tx-56); }
-.sw-item.is-active { color: #fff; }
+.sw-item:hover { opacity: 0.6; }
+.sw-item.is-active { opacity: 1; }
+.sw-ic { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; flex-shrink: 0; }
+.sw-ic svg { width: 30px; height: auto; display: block; }
 
 /* Блоки каналов/передач: отступы между карточками 8px, скругления 16px */
 html:is([data-mode="v1"],[data-mode="v2"],[data-mode="v3"]) .grid { gap: 8px; }
@@ -1204,7 +1205,8 @@ html[data-shell-open] .mode-layer-inner { opacity: 1; }
   transition: background .15s ease, color .15s ease;
 }
 .seg:hover { color: #fff; }
-.device-seg.is-active { background: #fff; color: #111; }
+.device-seg.is-active,
+.nav-seg.is-active { background: #fff; color: #111; }
 .mode-tab.is-active { background: var(--accent); color: #fff; }
 .mode-tab.is-disabled,
 .device-seg.is-disabled { opacity: .35; pointer-events: none; cursor: default; }
@@ -1329,7 +1331,7 @@ html[data-shell-open] .app-shell {
   position: sticky;
   top: 0;
   z-index: 5;
-  background: linear-gradient(180deg, var(--bg) 0%, var(--bg) calc(100% - 28px), transparent 100%);
+  background: linear-gradient(180deg, var(--bg) 0%, var(--bg) calc(100% - 44px), transparent 100%);
   padding-top: 24px;
   margin-top: -24px;
 }
@@ -1457,7 +1459,7 @@ html[data-shell-open] .app-shell {
 .fe-ser-arrow.is-hidden { opacity: 0; pointer-events: none; }
 /* Градиенты-затемнения по краям ленты серий (видны, когда есть куда скроллить) */
 .fe-ser-fade {
-  position: absolute; top: 0; height: 118px; width: 56px; z-index: 2;
+  position: absolute; top: 0; bottom: 0; width: 56px; z-index: 2;
   pointer-events: none; opacity: 0; transition: opacity .15s ease;
 }
 .fe-ser-fade.l { left: 0; background: linear-gradient(90deg, var(--bg) 12%, transparent); }
@@ -2068,13 +2070,15 @@ html:is([data-mode="v2"],[data-mode="v3"]) .gal-less {
   transition: opacity .25s ease;
   z-index: 15;
 }
+/* Выравниваем градиенты по реальным краям ленты (grid выступает на 12px за .gal
+   из-за отрицательных марджинов для ховера), иначе с краю остаётся незатемнённая полоска */
 html:is([data-mode="v2"],[data-mode="v3"]) .gal-more {
-  right: 0; justify-content: flex-end;
-  background: linear-gradient(90deg, #0000 0%, #000 100%);
+  right: -12px; justify-content: flex-end; padding-right: 12px;
+  background: linear-gradient(90deg, transparent 0%, var(--bg) 92%);
 }
 html:is([data-mode="v2"],[data-mode="v3"]) .gal-less {
-  left: 0; justify-content: flex-start;
-  background: linear-gradient(270deg, #0000 0%, #000 100%);
+  left: -12px; justify-content: flex-start; padding-left: 12px;
+  background: linear-gradient(270deg, transparent 0%, var(--bg) 92%);
 }
 html:is([data-mode="v2"],[data-mode="v3"]) .gal-more.is-hidden,
 html:is([data-mode="v2"],[data-mode="v3"]) .gal-less.is-hidden { opacity: 0; }
@@ -2375,8 +2379,8 @@ html:is([data-mode="v2"],[data-mode="v3"]) .show-small .show-ov { display: none;
 /* Без overflow:hidden — фон-градиент мягко бледнеет по краям (логика как у
    спортивного блока), не обрезается жёстким прямоугольником. */
 .topshows {
-  position: relative; margin-top: 56px;
-  padding: 56px 40px 44px;
+  position: relative; margin-top: 48px;
+  padding: 36px 40px 28px;
 }
 .ts-bg { position: absolute; top: -150px; bottom: -40px;
   left: calc(-1 * var(--gutter)); right: calc(-1 * var(--gutter)); width: auto; z-index: 0;
@@ -2387,11 +2391,11 @@ html:is([data-mode="v2"],[data-mode="v3"]) .show-small .show-ov { display: none;
   -webkit-mask-image: linear-gradient(180deg, #0000 0, #000 200px, #000 calc(100% - 70px), #0000 100%);
   mask-image: linear-gradient(180deg, #0000 0, #000 200px, #000 calc(100% - 70px), #0000 100%); }
 .topshows > *:not(.ts-bg) { position: relative; z-index: 1; }
-.ts-title { margin: 0 0 30px; text-align: center; color: #fff;
-  font-size: 64px; line-height: 1; font-weight: 800; letter-spacing: -.02em; text-transform: uppercase; }
+.ts-title { margin: 0 0 20px; text-align: center; color: #fff;
+  font-size: 44px; line-height: 1; font-weight: 800; letter-spacing: -.02em; text-transform: uppercase; }
 /* Табы — состояния как в макете: активный — чёрная таблетка, неактивные —
    полупрозрачная чёрная таблетка; текст 20px, белый. */
-.ts-tabs { display: flex; justify-content: center; flex-wrap: nowrap; gap: 8px; margin-bottom: 28px; }
+.ts-tabs { display: flex; justify-content: center; flex-wrap: nowrap; gap: 8px; margin-bottom: 20px; }
 .ts-tab {
   display: inline-flex; flex-direction: column; align-items: center;
   padding: 12px 20px; border-radius: 100px;
@@ -2408,13 +2412,13 @@ html:is([data-mode="v2"],[data-mode="v3"]) .show-small .show-ov { display: none;
 }
 .ts-tab:hover { color: #fff; background: rgba(0, 0, 0, 0.55); }
 .ts-tab.is-active { background: #000; color: #fff; font-weight: 700; }
-.ts-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px 16px; }
+.ts-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px 14px; }
 .ts-card { display: flex; flex-direction: column; }
 .ts-poster { aspect-ratio: 16 / 9; border-radius: 16px; overflow: hidden; background: var(--card); transition: transform .25s ease; }
 .ts-poster img { width: 100%; height: 100%; object-fit: cover; }
 /* увеличивается вся рамка постера целиком, а не картинка внутри */
 .ts-card:hover .ts-poster { transform: scale(1.03); }
-.ts-desc { margin-top: 14px; font-size: 15px; line-height: 20px; color: #fff;
+.ts-desc { margin-top: 10px; font-size: 14px; line-height: 19px; color: #fff;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .ts-meta { margin-top: 10px; font-size: 14px; color: var(--tx-72); display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
 .ts-card.is-loading { height: 300px; border-radius: 16px;
@@ -2466,3 +2470,191 @@ html[data-device="mobile"] .page .datebar { padding: 10px; border-radius: 18px; 
 html[data-device="mobile"] .page .date-item { padding: 8px 12px; }
 html[data-device="mobile"] .page .date-num { font-size: 24px; line-height: 28px; }
 html[data-device="mobile"] .page .date-nav { width: 38px; height: 38px; }
+
+
+/* ============================================================
+   Новая главная сервиса (main.html) — по макету H5Z
+   ============================================================ */
+#homeFeed { padding-bottom: 72px; }
+.mh-gal, .mh-continue, .mh-onb, .mh-promo, .mh-chsec { margin-top: 48px; }
+
+/* ---- Заголовок секции (32px bold + шеврон) ---- */
+.mh-head { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+.mh-h2 { margin: 0; font-size: 32px; line-height: 36px; font-weight: 700; letter-spacing: -.01em; color: #fff; }
+.mh-chev, .mh-head .mh-chev { font-size: 28px; line-height: 1; color: var(--tx-48); font-weight: 400; }
+.mh-promo-ic { font-size: 28px; }
+
+/* ---- Ряды карточек 16:9 ---- */
+.mh-row {
+  display: grid; grid-auto-flow: column; grid-auto-columns: calc((100% - 4 * 8px) / 5);
+  gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 8px 8px 0; margin: -8px -8px 0;
+}
+.mh-row + .mh-row { margin-top: 8px; }
+.mh-row::-webkit-scrollbar { display: none; }
+.mh-c16, .mh-cbig {
+  display: block; aspect-ratio: 16 / 9; border-radius: 16px; overflow: hidden;
+  background: #141414 center / cover no-repeat; transition: transform .2s ease;
+}
+.mh-c16:hover, .mh-cbig:hover { transform: scale(1.04); z-index: 2; }
+/* Крупный ряд — 3 карточки, скругление 32, мягкое внутреннее свечение */
+.mh-row-big { grid-auto-columns: calc((100% - 2 * 8px) / 3); }
+.mh-cbig { border-radius: 32px; box-shadow: inset 0 0 64px rgba(255,255,255,0.12); }
+
+/* ---- Герой ---- */
+.mh-hero {
+  position: relative; margin: 12px calc(-1 * var(--gutter)) 0;
+  height: 440px; display: flex; align-items: center; justify-content: center; overflow: hidden;
+}
+.mh-hero-stage {
+  position: relative; z-index: 2; width: min(1113px, 80%); height: 440px;
+  border-radius: 32px; background: #0e0e10 center / cover no-repeat;
+  display: flex; align-items: center;
+}
+.mh-hero-stage::before {
+  content: ""; position: absolute; inset: 0; border-radius: 32px;
+  background: linear-gradient(90deg, rgba(8,8,10,0.92) 0%, rgba(8,8,10,0.55) 34%, transparent 62%);
+}
+.mh-hero-col { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 24px; padding-left: 56px; width: 340px; }
+.mh-hero-logo { width: 48px; height: auto; }
+.mh-hero-title { width: 100%; max-height: 84px; object-fit: contain; object-position: left; }
+.mh-hero-sub { margin-top: -8px; font-size: 18px; line-height: 1.2; color: #FFFFFFE0; }
+.mh-hero-btn {
+  align-self: flex-start; display: inline-flex; align-items: center; justify-content: center;
+  height: 56px; padding: 0 36px; border-radius: 18px; background: #F30745; color: #fff;
+  font-size: 18px; font-weight: 500;
+}
+.mh-hero-btn:hover { background: #ff1f58; }
+.mh-hero-peek, .mh-hero-peeks-r .mh-hero-peek {
+  position: absolute; border-radius: 32px; background: #141414 center / cover no-repeat;
+  filter: brightness(.82); z-index: 1;
+}
+/* Боковые постеры примыкают к центральному с зазором 16px (постер центрирован,
+   половина его ширины = min(556.5px, 40%) от центра). */
+.mh-peek-l { left: auto; right: calc(50% + min(556.5px, 40%) + 16px); top: 80px; width: 190px; height: 280px; }
+.mh-hero-peeks-r { position: absolute; right: auto; left: calc(50% + min(556.5px, 40%) + 16px); top: 92px; z-index: 1; display: flex; flex-direction: column; gap: 12px; }
+.mh-hero-peeks-r .mh-hero-peek { position: relative; left: 0; top: 0; width: 262px; height: 142px; }
+
+/* ---- Продолжить просмотр ---- */
+.mh-continue { margin-top: 28px; }
+.mh-continue + .gal { margin-top: 68px; }
+.mh-pills {
+  display: grid; grid-auto-flow: column; grid-auto-columns: calc((100% - 4 * 12px) / 5);
+  gap: 12px; overflow-x: auto; scrollbar-width: none;
+}
+.mh-pills::-webkit-scrollbar { display: none; }
+.mh-pill {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  height: 64px; padding: 0 8px 0 20px; border-radius: 18px; background: rgba(255,255,255,0.06);
+}
+.mh-pill-t { font-size: 15px; font-weight: 600; color: #fff; line-height: 18px; }
+.mh-pill-img { flex-shrink: 0; width: 72px; height: 44px; border-radius: 10px; background: #141414 center / cover no-repeat; }
+.mh-cwrow {
+  margin-top: 16px; display: grid; grid-auto-flow: column; grid-auto-columns: calc((100% - 4 * 8px) / 5);
+  gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px;
+}
+.mh-cwrow::-webkit-scrollbar { display: none; }
+.mh-cw { display: flex; flex-direction: column; }
+.mh-cw-img {
+  position: relative; aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden;
+  background: #141414 center / cover no-repeat;
+}
+.mh-cw-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: rgba(255,255,255,0.28); }
+.mh-cw-bar span { display: block; height: 100%; background: #F30745; }
+.mh-cw-ttl { margin-top: 10px; font-size: 16px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mh-cw-sub { margin-top: 2px; font-size: 14px; color: var(--tx-56); }
+.mh-cw-new { color: #21D468; font-weight: 600; }
+
+/* ---- Лента каналов ---- */
+.mh-chrow {
+  display: grid; grid-auto-flow: column; grid-auto-columns: calc((100% - 7 * 12px) / 8);
+  gap: 12px; overflow-x: auto; scrollbar-width: none; padding: 8px 0; margin: -8px 0;
+}
+.mh-chrow::-webkit-scrollbar { display: none; }
+.mh-ch { display: block; aspect-ratio: 16 / 9; border-radius: 14px; background: #141414 center / cover no-repeat; transition: transform .2s ease; }
+.mh-ch:hover { transform: scale(1.05); z-index: 2; }
+
+/* ---- Онбординг: стикеры ---- */
+.mh-onb { text-align: center; padding: 24px 0 8px; }
+.mh-onb-ttl { margin: 0; font-size: 36px; line-height: 40px; font-weight: 800; color: #fff; letter-spacing: -.01em; }
+.mh-onb-sub { margin-top: 10px; font-size: 16px; color: var(--tx-56); }
+.mh-onb-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px 20px; margin-top: 36px; }
+.mh-st {
+  position: relative; height: 56px; padding: 0 26px; border-radius: 16px;
+  font-size: 20px; font-weight: 800; font-style: italic; text-transform: uppercase; letter-spacing: .02em;
+  color: var(--sc, #fff); background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+  cursor: pointer; transition: transform .15s ease, background .15s ease;
+}
+.mh-st:hover { transform: translateY(-3px); background: rgba(255,255,255,0.1); }
+.mh-st.is-on::after {
+  content: "✓"; position: absolute; top: -10px; right: -10px; width: 24px; height: 24px; border-radius: 50%;
+  background: #21D468; color: #fff; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center;
+}
+.mh-onb-cta {
+  display: inline-flex; align-items: center; gap: 10px; margin-top: 40px; height: 56px; padding: 0 32px;
+  border-radius: 999px; background: #F30745; color: #fff; font-size: 17px; font-weight: 600; border: none; cursor: pointer;
+}
+.mh-onb-cta:hover { background: #ff1f58; }
+.mh-onb-n { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; background: rgba(255,255,255,0.25); font-size: 14px; }
+
+/* ---- Промо: 3 вертикальных постера ---- */
+.mh-promo-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.mh-pcard {
+  position: relative; display: flex; align-items: flex-end; justify-content: center;
+  aspect-ratio: 454 / 704; border-radius: 28px; overflow: hidden;
+  background: #141414 center / cover no-repeat; transition: transform .2s ease;
+}
+.mh-pcard:hover { transform: scale(1.02); }
+.mh-pcard-grad { position: absolute; inset: 0; background: linear-gradient(0deg, rgba(0,0,0,0.75) 0%, transparent 42%); }
+.mh-pcard-ttl { position: relative; z-index: 1; padding: 0 20px 28px; font-size: 26px; line-height: 30px; font-weight: 800; color: #fff; text-align: center; }
+
+/* ---- Топовые шоу: сетка 2×3 ---- */
+.mh-grid23 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.mh-grid23 .mh-cbig { aspect-ratio: 16 / 9; }
+
+/* ---- Новое меню (main.html, макет IBW) ---- */
+.mh-nav {
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+  height: 72px; margin-top: 12px; gap: 16px;
+}
+.mh-nav-logo { justify-self: start; display: inline-flex; }
+.mh-nav-logo img { height: 34px; width: auto; }
+.mh-nav-center { justify-self: center; display: flex; align-items: center; gap: 12px; }
+.mh-nav-search {
+  flex-shrink: 0; width: 48px; height: 48px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: rgba(255,255,255,0.08); color: #fff; cursor: pointer; border: none;
+  transition: background .15s ease;
+}
+.mh-nav-search:hover { background: rgba(255,255,255,0.14); }
+.mh-nav-pill {
+  display: flex; align-items: center; gap: 6px; height: 48px; padding: 0 10px;
+  border-radius: 999px; background: rgba(255,255,255,0.08);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+.mh-nav-pill a {
+  display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 16px; border-radius: 999px;
+  color: #fff; font-size: 16px; font-weight: 500; white-space: nowrap; transition: background .15s ease;
+}
+.mh-nav-pill a:hover { background: rgba(255,255,255,0.12); }
+.mh-nav-sport { position: relative; }
+.mh-nav-badge {
+  display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border-radius: 7px; font-size: 9px; line-height: 9px; font-weight: 800;
+  color: #fff; background: linear-gradient(135deg, #2b6cff, #7a3cff); text-align: center;
+}
+.mh-nav-right { justify-self: end; display: flex; align-items: center; gap: 12px; }
+.mh-nav-icon {
+  width: 48px; height: 48px; border-radius: 14px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: rgba(255,255,255,0.08); color: #fff; cursor: pointer; border: none;
+  transition: background .15s ease;
+}
+.mh-nav-icon:hover { background: rgba(255,255,255,0.14); }
+.mh-nav-avatar {
+  width: 48px; height: 48px; border-radius: 50%; overflow: hidden; padding: 0; border: none; cursor: pointer;
+  background: rgba(255,255,255,0.08);
+}
+.mh-nav-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+/* Новая навигация: старую шапку скрываем, показываем новое меню (вставляется shell.js) */
+html[data-nav="new"] .topbar { display: none; }

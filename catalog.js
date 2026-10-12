@@ -23,14 +23,25 @@ function tabThumbs(tag) {
   // Передний постер — реальный; задний всегда заглушка-«загрузка».
   return `<span class="tab-thumbs"><span class="tt-back tt-stub"></span><img class="tt-front" src="${channelThumb(list[0])}" alt=""></span>`;
 }
-// Вариант 4 — «живые» эмодзи-табы (макет WBH): текст + 3D-эмодзи в стеклянной пилюле.
-const V4_EMOJI = ["☄️", "❤️", "👀", "🍪", "🔥", "☄️", "🎭", "💎"];
+// Вариант 4 — «живые» табы (макет): текст + 3D-иконка из ассетов макета в стеклянной пилюле.
+const PA = "https://app.paper.design/file-assets/01M45XC9MW0NZTHRFA799G9DJ7/";
+const V4_ICONS = [
+  "7EVWJDB6PBT28KDSSC3PH96E1S.png", // Все каналы — комета
+  "0RDPVAP149TBKN1HCEWFY22TMZ.png", // Развлекательное — сердце
+  "2XC1VP5CCM1FV3BE4FZAMYSRXE.png", // Федеральные — глаза
+  "1EYZ403CGV9K2JCKV0K6N3690X.png", // Детские — печенье
+  "6B5AEQ8DSPK6GB6CK57HZKW888.png", // Спорт — огонь
+  "7EVWJDB6PBT28KDSSC3PH96E1S.png", // Документальные — комета
+  "2ERF6A2CP700JTDER437N3ZP1X.png", // Кино и сериалы — маска
+  "32KXEE3KPBB0PJNHY4N6BF602N.png", // Музыкальные — кристалл
+];
+const v4Icon = (i) => `<span class="tab-emoji"><img src="${PA}${V4_ICONS[i % V4_ICONS.length]}" alt="" loading="lazy"></span>`;
 function renderTabs() {
   const v4 = variant() === "v4";
   const v3 = getMode() === "v3" && variant() !== "v2" && !v4; // v2 и v4 — свои табы
   tabsEl.innerHTML = tabList()
     .map((t, i) => v4
-      ? `<button class="tab${i === v1Tab ? " is-active" : ""}">${t.label}<span class="tab-emoji">${V4_EMOJI[i % V4_EMOJI.length]}</span></button>`
+      ? `<button class="tab${i === v1Tab ? " is-active" : ""}">${t.label}${v4Icon(i)}</button>`
       : `<button class="tab${i === v1Tab ? " is-active" : ""}">${t.label}${v3 ? tabThumbs(t.tag) : ""}</button>`)
     .join("");
 }
@@ -357,7 +368,6 @@ function fillHero(el) {
 
 // Крупный спортивный блок — статичная вёрстка один-в-один с макетом (H5Z-0),
 // изображения берём напрямую из макета, без реальных данных Иви.
-const PA = "https://app.paper.design/file-assets/01M45XC9MW0NZTHRFA799G9DJ7/";
 const SB_CHIPS = [
   { t: "Активные<br>трасляции", b: "4QWS4H1PWT9Q2EZZG1509K5SCW.png", f: "6ZS9GRRAV6ZPW8E4J92H9RWSD0.png", active: true },
   { t: "Прошедшие<br>матчи", b: "5ZGVWQ1WZTDPTAE3J131DJ5DDW.png", f: "4S22NH4XBCAZF02P7KV9EZ9FW6.png" },
@@ -559,14 +569,14 @@ function fillTopShows(el) {
     <div class="ts-bg"></div>
     <h2 class="ts-title">Топовые шоу</h2>
     <div class="ts-tabs">${TS_TABS.map((t, i) => `<button class="ts-tab${i === 0 ? " is-active" : ""}" data-label="${t}">${t}</button>`).join("")}</div>
-    <div class="ts-grid">${Array.from({ length: 6 }, () => '<div class="ts-card is-loading"></div>').join("")}</div>`;
+    <div class="ts-grid">${Array.from({ length: 8 }, () => '<div class="ts-card is-loading"></div>').join("")}</div>`;
   el.querySelector(".ts-tabs").addEventListener("click", (e) => {
     const b = e.target.closest(".ts-tab"); if (!b) return;
     el.querySelectorAll(".ts-tab").forEach((t) => t.classList.toggle("is-active", t === b));
   });
-  collection("realiti-shou", { to: 11 })
+  collection("realiti-shou", { to: 13 })
     .then((items) => {
-      el.querySelector(".ts-grid").innerHTML = items.slice(0, 6).map((it, i) => `
+      el.querySelector(".ts-grid").innerHTML = items.slice(0, 8).map((it, i) => `
         <a class="ts-card" href="https://www.ivi.ru/watch/${it.hru || it.id}" target="_blank" rel="noopener" title="${it.title}">
           <div class="ts-poster"><img loading="lazy" src="${contentThumb(it, 760, 428)}" alt="${it.title}"></div>
           <div class="ts-desc">${showDesc(it, i)}</div>
