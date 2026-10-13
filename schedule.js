@@ -152,16 +152,19 @@ function renderList() {
       : (GENRES[i % GENRES.length] === "реалити шоу" ? "новости" : GENRES[i % GENRES.length]);
     const cover = r.cover || covers[i % (covers.length || 1)] || realCover;
     // Прогресс «в эфире» — всегда середина эфира, без привязки к реальному времени.
+    // По макету ZGQ — только прогресс-линия эфира, без пилюли «ещё N минут».
     const onPoster = r.now
-      ? `<div class="fe-progline"><span class="fe-progfill" style="width:45%"></span></div>` +
-        `<span class="fe-mins">ещё 35 ${pluralMin(35)}</span>`
+      ? `<div class="fe-progline"><span class="fe-progfill" style="width:45%"></span></div>`
       : "";
     // Под Иви-контентом — лента серий: днём «Все выпуски шоу», вечером «Все серии сериала».
     const block = blue
       ? (r.kind === "series"
-          ? renderSeries(seriesEps, "Все серии сериала", true)
-          : renderSeries(episodes, "Все выпуски шоу"))
+          ? renderSeries(seriesEps, "Все серии сериала на Иви", true)
+          : renderSeries(episodes, "Все выпуски шоу на Иви"))
       : "";
+    // По макету ZGQ у текущего эфира кнопка «В эфир» стоит ПОД описанием (в колонке
+    // инфо, слева); у остальных Иви-передач кнопка «Смотреть на Иви» — справа.
+    const watchBtn = blue ? `<a class="fe-watch" href="https://www.ivi.ru/" target="_blank" rel="noopener">${r.now ? "В эфир" : "Смотреть на Иви"}</a>` : "";
     return `<div class="fe-card${r.now ? " is-now" : ""}${r.past ? " is-past" : ""}">
       <div class="fe-timecol">
         <span class="fe-time">${r.time}</span>
@@ -172,8 +175,9 @@ function renderList() {
         <div class="fe-ttl">${r.title}</div>
         <div class="fe-genre">${genre}</div>
         <div class="fe-desc">${r.desc}</div>
+        ${r.now ? watchBtn : ""}
       </div>
-      ${blue ? '<a class="fe-watch" href="https://www.ivi.ru/" target="_blank" rel="noopener">Смотреть на Иви</a>' : ""}
+      ${r.now ? "" : watchBtn}
     </div>${block}`;
   }).join("");
   setupSeriesNav();

@@ -429,11 +429,7 @@ function renderProgShows() {
 renderProgShows();
 window.addEventListener("modechange", renderProgShows);
 
-// ---- Самое интересное (навигационные плитки) ----
-const collections = ["Линия сборки", "Лучшие сериалы в подписке", "Хиты кинопроката", "Добрые мультфильмы", "Выбор Иви"];
-document.getElementById("collectionsRail").innerHTML = collections
-  .map((c) => `<div class="collection"><div class="collection-art"></div><div class="collection-cap">${c}</div></div>`)
-  .join("");
+// ---- Самое интересное — блок убран (без постеров) ----
 
 // ---- Переключатель «Телепрограмма» ----
 const toggle = document.getElementById("tvToggle");
@@ -441,3 +437,31 @@ toggle.addEventListener("click", () => {
   const on = toggle.classList.toggle("is-on");
   toggle.setAttribute("aria-checked", String(on));
 });
+
+// ---- Вариант 2: плавающий PiP-плеер поверх страницы телепрограммы ----
+// Плеер не исчезает при переходе с ТВ онлайн — висит в левом нижнем углу,
+// по клику разворачивается обратно на ТВ онлайн (с анимацией роста).
+(function setupV4bPip() {
+  let mode = "asis", thumb = "", title = "";
+  try {
+    mode = localStorage.getItem("ivi-proto-mode") || "asis";
+    thumb = localStorage.getItem("v4bCurrentThumb") || "";
+    title = localStorage.getItem("v4bCurrentTitle") || "Прямой эфир";
+  } catch {}
+  if (mode !== "v4b" || !thumb) return;
+  // Рисуем сразу тем же кадром, что был в плеере, — бесшовная передача без мигания.
+  const pip = document.createElement("div");
+  pip.className = "v4b-pip";
+  pip.innerHTML = `<img class="v4b-pip-bg" src="${thumb}" alt=""><span class="v4b-pip-grad"></span>
+    <span class="v4b-pip-title">${title}</span>
+    <button class="v4b-pip-expand" aria-label="Скрыть">
+      <svg viewBox="0 0 20 20" width="16" height="16"><path fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" d="M5 5l10 10M15 5l-10 10"/></svg>
+    </button>`;
+  (document.querySelector(".page") || document.body).appendChild(pip);
+  // Клик по крестику — скрыть окошко; по самому плееру — вернуться на ТВ онлайн.
+  pip.querySelector(".v4b-pip-expand").addEventListener("click", (e) => { e.stopPropagation(); pip.remove(); });
+  pip.addEventListener("click", () => {
+    try { sessionStorage.setItem("v4bPipBack", "1"); } catch {}
+    location.href = "index.html";
+  });
+})();

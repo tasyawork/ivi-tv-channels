@@ -3,19 +3,25 @@
 // ПОЗАДИ основного экрана: свайп/скролл вверх у верхнего края «отодвигает»
 // основной экран вниз, открывая слой настроек.
 
+// hidden — пока убраны из интерфейса (код оставляем, вернёмся позже).
+// В интерфейсе остаются только две гипотезы на базе прежнего В4:
+//   v4  → «Вариант 1» (прежний В4), v4b → «Вариант 2» (пока копия v4).
 const MODES = [
-  { id: "asis", label: "As is", sub: "Как сейчас работает сервис" },
-  { id: "v1", label: "Вариант 1", sub: "Гипотеза A", disabled: true },
-  { id: "v2", label: "Вариант 2", sub: "Гипотеза B" },
-  { id: "v3", label: "Вариант 3", sub: "Гипотеза C" },
-  { id: "v4", label: "Вариант 4", sub: "Гипотеза D" },
+  { id: "asis", label: "As is", sub: "Как сейчас работает сервис", hidden: true },
+  { id: "v1", label: "Вариант 1", sub: "Гипотеза A", disabled: true, hidden: true },
+  { id: "v2", label: "Вариант 2", sub: "Гипотеза B", hidden: true },
+  { id: "v3", label: "Вариант 3", sub: "Гипотеза C", hidden: true },
+  { id: "v4", label: "Вариант 1", sub: "Гипотеза D" },
+  { id: "v4b", label: "Вариант 2", sub: "Копия для доработки" },
 ];
+// v4b визуально — копия v4: отдаём ему data-variant="v4", различаем через data-copy.
+const variantAttr = (id) => (id === "v4b" ? "v4" : id);
 
-// ---------- Навигация прототипа: старая (все варианты) / новая (только В4) ----------
+// ---------- Навигация прототипа: старая / новая (меняет только шапку-навигацию) ----------
 const NAV_KEY = "ivi-proto-nav";
 const getNav = () => { try { return localStorage.getItem(NAV_KEY) || "old"; } catch { return "old"; } };
-// Какие режимы доступны при текущей навигации: старая — все; новая — только В4.
-const navModes = () => (getNav() === "new" ? MODES.filter((m) => m.id === "v4") : MODES);
+// В интерфейсе показываем только видимые варианты (прежние В1–В3 и As is скрыты).
+const navModes = () => MODES.filter((m) => !m.hidden);
 
 function renderModeTabs() {
   const group = document.querySelector(".mode-group");
@@ -48,13 +54,12 @@ function ensureNewNav() {
         <a href="#">Фильмы</a>
         <a href="#">Сериалы</a>
         <a href="#">Шоу</a>
-        <a href="index.html">ТВ</a>
+        <a href="index.html" class="is-current">ТВ</a>
         <a href="#" class="mh-nav-sport">Спорт <span class="mh-nav-badge">ЧМ<br>26</span></a>
       </nav>
     </div>
     <div class="mh-nav-right">
-      <button class="mh-nav-icon" aria-label="Сохранённое"><svg viewBox="0 0 24 24" width="22" height="22"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M6 4h12a1 1 0 0 1 1 1v15l-7-4-7 4V5a1 1 0 0 1 1-1z"/></svg></button>
-      <button class="mh-nav-avatar" aria-label="Профиль"><img src="${PA}02DQY8ZFK9F15VN9EMCZVC3W53.svg" alt=""></button>
+      <button class="mh-nav-avatar" aria-label="Профиль"><img src="${PA}65Q13X5PFWKCV8V00FB9GJ8GZY.png" alt=""></button>
     </div>`;
   topbar.parentNode.insertBefore(el, topbar);
 }
@@ -63,8 +68,8 @@ function setNav(nav) {
   try { localStorage.setItem(NAV_KEY, nav); } catch {}
   document.querySelectorAll(".nav-seg").forEach((b) => b.classList.toggle("is-active", b.dataset.nav === nav));
   renderModeTabs();
-  // Новая навигация — всегда Вариант 4 (единственный доступный режим).
-  if (nav === "new") setMode("v4");
+  // Если текущий режим скрыт/недоступен — ставим «Вариант 1» (v4).
+  if (!MODES.find((m) => m.id === getMode() && !m.disabled && !m.hidden)) setMode("v4");
   // Переход на соответствующую главную: новая — новая главная, старая — ТВ онлайн.
   const target = nav === "new" ? "main.html" : "index.html";
   if (!location.pathname.endsWith("/" + target) && !location.pathname.endsWith(target)) {
@@ -80,7 +85,8 @@ function setMode(id) {
   // Варианты 1/2/3 используют единый макет Варианта 3 (data-mode="v3");
   // реальный выбор держим в data-variant — через него v2 получает свои отличия.
   document.documentElement.setAttribute("data-mode", id === "asis" ? "asis" : "v3");
-  document.documentElement.setAttribute("data-variant", id);
+  document.documentElement.setAttribute("data-variant", variantAttr(id));
+  document.documentElement.setAttribute("data-copy", id);
   document.querySelectorAll(".mode-tab").forEach((t) =>
     t.classList.toggle("is-active", t.dataset.mode === id)
   );
@@ -116,7 +122,8 @@ function build() {
   const page = document.querySelector(".page");
   if (!page) return;
   document.documentElement.setAttribute("data-mode", getMode() === "asis" ? "asis" : "v3");
-  document.documentElement.setAttribute("data-variant", getMode());
+  document.documentElement.setAttribute("data-variant", variantAttr(getMode()));
+  document.documentElement.setAttribute("data-copy", getMode());
   document.documentElement.setAttribute("data-device", getDevice());
   document.documentElement.setAttribute("data-nav", getNav());
   if (getNav() === "new") ensureNewNav();
@@ -157,9 +164,10 @@ function build() {
     if (isOpen) { e.preventDefault(); e.stopPropagation(); close(); }
   }, true);
 
-  // В новой навигации доступен только В4; в старой — сохранённый режим (не отключённый).
-  let startMode = nav === "new" ? "v4" : getMode();
-  if (MODES.find((m) => m.id === startMode)?.disabled) startMode = "asis";
+  // Стартуем с сохранённого режима; если он скрыт/отключён (прежние В1–В3, As is) —
+  // откатываемся на «Вариант 1» (v4).
+  let startMode = getMode();
+  if (!MODES.find((m) => m.id === startMode && !m.disabled && !m.hidden)) startMode = "v4";
   setMode(startMode);
   renderModeTabs();
   setDevice("desktop"); // мобайл временно скрыт
