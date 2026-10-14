@@ -920,8 +920,6 @@ html:is([data-mode="v2"],[data-mode="v3"]) #v1Body { padding-bottom: 88px; }
 html:is([data-copy="v4b"],[data-copy="v4c"]) .intro { margin-top: 16px; margin-bottom: 0; }
 html:is([data-copy="v4b"],[data-copy="v4c"]) #tabs { margin-top: 16px; }
 html:is([data-copy="v4b"],[data-copy="v4c"]) .tabs-bar { padding: 0 0 16px; }
-/* Табы категорий не залипают у верха при скролле (прототип, все v4-варианты). */
-html[data-variant="v4"] .tabs-bar { position: static; }
 html:is([data-copy="v4b"],[data-copy="v4c"]) #v1Body > .v4b-player { margin-top: 0; }
 html:is([data-copy="v4b"],[data-copy="v4c"]) .v4b-player .watch { margin-top: 0; }
 html[data-copy="v4b"] #v4bFeed > .gal:first-child { margin-top: 30px; }
