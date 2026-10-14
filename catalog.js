@@ -12,6 +12,10 @@ const isV1like = () => ["v1", "v2", "v3"].includes(getMode());
 const isV2like = () => getMode() === "v2" || getMode() === "v3"; // v3 = копия v2
 // Вариант 2 прототипа (копия v4): data-copy="v4b". На ТВ онлайн — встроенный плеер.
 const isV4b = () => document.documentElement.getAttribute("data-copy") === "v4b";
+// Вариант 3 (копия v4): одноряд-галереи «Сейчас в эфире» (мета снизу, hover → эфир).
+const isV4c = () => document.documentElement.getAttribute("data-copy") === "v4c";
+// Встроенный плеер на ТВ онлайн — в Вариантах 2 и 3.
+const hasPlayer = () => isV4b() || isV4c();
 const tabList = () => (isV1like() ? TABS : HOME_TABS);
 // Стрелка-шеврон для подсказок скролла подборок (макет JOP-0).
 const ARROW_SVG = '<svg viewBox="0 0 12 32" width="11" height="29"><path fill="currentColor" d="M11.607 14.626C12.131 15.461 12.131 16.539 11.607 17.374L2.425 32L0 30.352L9.01 16L0 1.648L2.425 0L11.607 14.626Z"/></svg>';
@@ -174,7 +178,7 @@ function fillPlayerBlock(el, tag) {
         <div class="pv-switch" role="tablist">
           <span class="pv-seg-ind" aria-hidden="true"></span>
           <button class="pv-seg is-active" data-view="channels">Каналы</button>
-          <button class="pv-seg" data-view="epg">Телепрограмма</button>
+          <button class="pv-seg" data-view="epg">Программа канала</button>
         </div>
       </aside>
     </div>`;
@@ -264,12 +268,35 @@ function fillPlayerBlock(el, tag) {
 
 // Вариант 2: клики по каналам в галереях переключают встроенный плеер, без перехода.
 document.getElementById("v1Body")?.addEventListener("click", (e) => {
-  if (!isV4b() || !v4bPlayer) return;
+  if (!hasPlayer() || !v4bPlayer) return;
   const a = e.target.closest('a[href^="player.html"]');
   if (!a || a.closest(".v4b-player")) return;
   e.preventDefault();
   const id = new URLSearchParams((a.getAttribute("href").split("?")[1]) || "").get("id");
   if (id) { v4bPlayer.setChannelById(id); window.scrollTo({ top: 0, behavior: "smooth" }); }
+});
+
+// Вариант 3 — единый видео-элемент превью эфира. Один элемент → видео грузится один раз,
+// при наведении он «переезжает» в наведённый постер и играет. Так превью появляется на
+// КАЖДОМ постере надёжно (без сотен тяжёлых <video> в DOM).
+const v4cPreview = document.createElement("video");
+v4cPreview.className = "v4c-video";
+v4cPreview.muted = true; v4cPreview.loop = true; v4cPreview.playsInline = true; v4cPreview.preload = "auto";
+v4cPreview.src = "assets/channel-preview.mov";
+document.getElementById("v1Body")?.addEventListener("mouseover", (e) => {
+  if (!isV4c()) return;
+  const thumb = e.target.closest(".v4c-thumb");
+  if (!thumb || thumb.contains(v4cPreview)) return;
+  thumb.appendChild(v4cPreview);
+  requestAnimationFrame(() => v4cPreview.classList.add("is-on"));
+  v4cPreview.play().catch(() => {});
+});
+document.getElementById("v1Body")?.addEventListener("mouseout", (e) => {
+  const thumb = e.target.closest(".v4c-thumb");
+  if (!thumb || !thumb.contains(v4cPreview)) return;
+  if (thumb.contains(e.relatedTarget)) return; // ещё внутри постера
+  v4cPreview.classList.remove("is-on");
+  v4cPreview.pause();
 });
 
 let showSeq = 0;
@@ -316,7 +343,7 @@ function renderV1() {
   const body = document.getElementById("v1Body");
   if (!body || !isV1like() || !channels.length) return;
   const tab = tabList()[v1Tab] || tabList()[0];
-  if (isV4b()) {
+  if (hasPlayer()) {
     body.innerHTML = `<div class="v4b-player"></div><div id="v4bFeed"></div>`;
     fillPlayerBlock(body.querySelector(".v4b-player"), tab.tag);
     renderFeedSections(body.querySelector("#v4bFeed"), tab);
@@ -375,7 +402,7 @@ function playerGrowFromPip() {
 
 // Вариант 2 — переключение секций ТВ онлайн / Программа передач.
 document.querySelector(".section-switch")?.addEventListener("click", (e) => {
-  if (!isV4b()) return;
+  if (!hasPlayer()) return;
   const item = e.target.closest(".sw-item");
   if (!item) return;
   const toProg = /программа/i.test(item.textContent);
@@ -411,11 +438,58 @@ function fillGallery(sec) {
     const k = pool.length ? (offset * 7) % pool.length : 0;
     list = base.concat(pool.slice(k).concat(pool.slice(0, k))).slice(0, isV2 ? 16 : MIN);
   }
+  // Вариант 3 — одноряд «Сейчас в эфире»: мета снизу всегда, hover → кадр эфира.
+  if (isV4c()) {
+    sec.classList.add("v4c-gal");
+    sec.innerHTML = `
+      <h2 class="gal-head">${heading} <span class="chev">›</span></h2>
+      <div class="gal-grid">${list.map(v4cCell).join("")}</div>
+      <div class="gal-less" aria-hidden="true"><span class="gal-more-arrow gal-arrow-left">${ARROW_SVG}</span></div>
+      <div class="gal-more" aria-hidden="true"><span class="gal-more-arrow">${ARROW_SVG}</span></div>`;
+    sec.querySelectorAll(".v4c-cell").forEach(fillV4cCell);
+    return;
+  }
   sec.innerHTML = `
     <h2 class="gal-head">${heading} <span class="chev">›</span></h2>
     <div class="gal-grid">${list.map(galCell).join("")}</div>
     <div class="gal-less" aria-hidden="true"><span class="gal-more-arrow gal-arrow-left">${ARROW_SVG}</span></div>
     <div class="gal-more" aria-hidden="true"><span class="gal-more-arrow">${ARROW_SVG}</span></div>`;
+}
+
+// Карточка Варианта 3: постер эфира + «ещё N мин», мета снизу (лого + канал + передача),
+// при наведении постер меняется на кадр того, что сейчас в эфире.
+function v4cCell(ch) {
+  return `
+    <div class="gal-cell v4c-cell" data-id="${ch.id}" data-paid="${ch.is_paid ? 1 : 0}">
+      <a class="v4c-thumb" href="player.html?id=${ch.id}" title="${ch.title}">
+        <img class="v4c-img" loading="lazy" src="${channelThumb(ch)}" alt="${ch.title}">
+        ${ch.is_paid ? '<span class="gal-pay" title="Платный канал">₽</span>' : ""}
+        <span class="v4c-mins" hidden></span>
+      </a>
+      <a class="v4c-meta" href="player.html?id=${ch.id}">
+        <span class="v4c-logo"><img loading="lazy" src="${channelThumb(ch)}" alt=""></span>
+        <span class="v4c-txt">
+          <span class="v4c-name">${ch.title}</span>
+          <span class="v4c-prog" data-prog="${ch.id}">В эфире</span>
+        </span>
+      </a>
+    </div>`;
+}
+
+function fillV4cCell(cell) {
+  if (!cell || cell.dataset.ready || !cell.dataset.id) return;
+  cell.dataset.ready = "1";
+  loadNow(+cell.dataset.id).then((tc) => {
+    if (!tc) return;
+    const prog = cell.querySelector(".v4c-prog"); if (prog) prog.textContent = tc.title;
+    // Главный постер — кадр передачи, которая сейчас в эфире (не логотип канала).
+    const img = cell.querySelector(".v4c-img");
+    const still = telecastThumb(tc);
+    if (img && still) img.src = still;
+    const min = tc.end ? Math.round((new Date(tc.end) - Date.now()) / 60000) : 0;
+    const mins = cell.querySelector(".v4c-mins");
+    if (mins && min > 0 && min < 600) { mins.textContent = `ещё ${min} ${pluralMin(min)}`; mins.hidden = false; }
+  }).catch(() => {});
 }
 
 // Плитка канала с мета-оверлеем при наведении (общая для галерей и «Любимых каналов»).
@@ -449,7 +523,7 @@ function addScrollHint(sec) {
   const sync = () => {
     const cell = grid.querySelector(".gal-cell");
     if (cell) {
-      const rows = sec.classList.contains("fav-gal") ? 1 : 2; // «Любимые каналы» — один этаж
+      const rows = sec.classList.contains("fav-gal") || sec.classList.contains("v4c-gal") ? 1 : 2;
       const sRect = sec.getBoundingClientRect(), cRect = cell.getBoundingClientRect();
       const top = (cRect.top - sRect.top) + "px", h = (cRect.height * rows + (rows === 2 ? 8 : 0)) + "px";
       more.style.top = top; more.style.height = h;
@@ -474,12 +548,15 @@ function fillFavs(el) {
   const pool = channels.slice(12);
   const list = (pool.length >= FAV_LIMIT ? pool : channels).slice(0, FAV_LIMIT);
   if (!list.length) { el.remove(); return; }
+  const v4c = isV4c();
   el.classList.add("gal", "fav-gal");
+  if (v4c) el.classList.add("v4c-gal");
   el.innerHTML = `
-    <h2 class="gal-head">Любимые каналы <span class="chev">›</span></h2>
-    <div class="gal-grid">${list.map(galCell).join("")}</div>
+    <h2 class="gal-head">${v4c ? "Сейчас в эфире" : "Любимые каналы"} <span class="chev">›</span></h2>
+    <div class="gal-grid">${list.map(v4c ? v4cCell : galCell).join("")}</div>
     <div class="gal-less" aria-hidden="true"><span class="gal-more-arrow gal-arrow-left">${ARROW_SVG}</span></div>
     <div class="gal-more" aria-hidden="true"><span class="gal-more-arrow">${ARROW_SVG}</span></div>`;
+  if (v4c) el.querySelectorAll(".v4c-cell").forEach(fillV4cCell);
   addScrollHint(el);
 }
 

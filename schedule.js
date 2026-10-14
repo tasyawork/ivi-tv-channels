@@ -60,6 +60,7 @@ let showCover = "";       // постер «Мама в 16» для обложк
 let seriesCover = "";     // постер «Холод» для обложки передачи
 let realCover = "";
 let activeDay = 0;
+let nowMode = false; // фильтр «Сейчас» — только текущая передача + 2 следующие
 let firstRender = true;
 
 // Полный день. «Сейчас» всегда середина дня (13:00) — без привязки к реальному времени.
@@ -144,7 +145,13 @@ function setupSeriesNav() {
 }
 
 function renderList() {
-  const rows = buildRows();
+  let rows = buildRows();
+  // Фильтр «Сейчас» — текущая передача + 2 следующие (без прошедших).
+  if (nowMode) {
+    const nowIdx = rows.findIndex((r) => r.now);
+    const start = nowIdx >= 0 ? nowIdx : 0;
+    rows = rows.slice(start, start + 3);
+  }
   $("fullEpg").innerHTML = rows.map((r, i) => {
     const blue = !!r.ivi;
     const genre = blue
@@ -195,7 +202,7 @@ function renderList() {
 function buildDayTabs() {
   const base = new Date();
   const wdFull = ["воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"];
-  const items = [];
+  const items = [`<button class="day-tab" data-i="now">сейчас</button>`];
   for (let off = -1; off <= 6; off++) {
     const d = new Date(base); d.setDate(base.getDate() + off);
     const dd = `${d.getDate()}.${d.getMonth() + 1}`;
@@ -206,7 +213,8 @@ function buildDayTabs() {
   $("dayTabs").addEventListener("click", (e) => {
     const b = e.target.closest(".day-tab");
     if (!b) return;
-    activeDay = +b.dataset.i;
+    nowMode = b.dataset.i === "now";
+    if (!nowMode) activeDay = +b.dataset.i;
     $("dayTabs").querySelectorAll(".day-tab").forEach((t) => t.classList.toggle("is-active", t === b));
     renderList();
   });

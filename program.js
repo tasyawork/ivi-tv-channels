@@ -15,6 +15,7 @@ const getDevice = () => document.documentElement.getAttribute("data-device") || 
 const getMode = () => document.documentElement.getAttribute("data-mode") || "asis";
 const variant = () => document.documentElement.getAttribute("data-variant") || "asis";
 const isV1like = () => ["v1", "v2", "v3"].includes(getMode());
+const isV4c = () => document.documentElement.getAttribute("data-copy") === "v4c";
 const tabList = () => (isV1like() ? TABS : HOME_TABS);
 const defaultTab = () => (isV1like() ? 2 : 0); // «Федеральные»
 let activeTab = defaultTab();
@@ -34,6 +35,7 @@ collection("popular-now-tvshows", { to: 30 })
 const CAL_ICON = '<svg viewBox="0 0 20 20" width="18" height="18"><path transform="translate(1 0)" fill="currentColor" d="M17 10C17.553 10 18 10.447 18 11L18 11.207C18 15.005 18 17.097 16.729 18.448C15.47 19.784 13.42 20 9 20C4.58 20 2.531 19.784 1.271 18.448C-0.001 17.097 0 15.005 0 11.207L0 11C0 10.447 0.447 10 1 10C1.553 10 2 10.447 2 11L2 11.207C2 14.386 1.999 16.304 2.728 17.077C3.462 17.857 5.416 18 9 18C12.584 18 14.539 17.857 15.273 17.077C16.001 16.304 16 14.386 16 11.207L16 11C16 10.447 16.447 10 17 10ZM13 0C13.553 0 14 0.447 14 1L14 2.274C16.745 2.768 17.799 4.112 17.958 7.706C17.972 8.044 17.847 8.376 17.615 8.618C17.383 8.861 17.056 9 16.719 9L1.281 9C0.944 9 0.617 8.861 0.385 8.618C0.152 8.376 0.027 8.044 0.042 7.708C0.201 4.112 1.255 2.768 4 2.275L4 1C4 0.447 4.447 0 5 0C5.553 0 6 0.447 6 1L6 2.063C6.881 2.016 7.871 2 9 2C10.129 2 11.119 2.016 12 2.063L12 1C12 0.447 12.447 0 13 0ZM9 4C7.8 4 6.815 4.019 6 4.066L6 5C6 5.553 5.553 6 5 6C4.447 6 4 5.553 4 5L4 4.319C2.434 4.695 2.177 5.471 2.08 7L15.92 7C15.823 5.471 15.566 4.695 14 4.319L14 5C14 5.553 13.553 6 13 6C12.447 6 12 5.553 12 5L12 4.066C11.185 4.019 10.2 4 9 4Z"/></svg>';
 const WD_FULL = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
 let activeDate = 0; // 0 — сегодня; диапазон -2..+7 (2 назад + неделя вперёд)
+let nowMode = false; // фильтр «Сейчас» — только текущая передача + 2 следующие
 const dateLabel = (off) => {
   if (off === 0) return "Сегодня";
   if (off === 1) return "Завтра";
@@ -44,13 +46,15 @@ const dateLabel = (off) => {
 function dateTab() {
   if (!isV1like()) return "";
   const today = new Date();
-  const items = Array.from({ length: 10 }, (_, i) => {
+  const nowItem = `<button class="td-item${nowMode ? " is-active" : ""}" data-off="now">
+      <span class="td-day">Сейчас</span><span class="td-num">эфир</span></button>`;
+  const items = nowItem + Array.from({ length: 10 }, (_, i) => {
     const off = i - 2; const d = new Date(today); d.setDate(today.getDate() + off);
-    return `<button class="td-item${off === activeDate ? " is-active" : ""}" data-off="${off}">
+    return `<button class="td-item${!nowMode && off === activeDate ? " is-active" : ""}" data-off="${off}">
       <span class="td-day">${dateLabel(off)}</span><span class="td-num">${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}</span></button>`;
   }).join("");
   return `<div class="tab-date" tabindex="0">
-    <span class="tab-date-btn">${CAL_ICON}<span class="tab-date-label">${dateLabel(activeDate)}</span><span class="tab-date-caret"><svg viewBox="0 0 16 6" width="12" height="5"><path fill="currentColor" d="M16 1.593L8.978 5.733C8.376 6.088 7.624 6.088 7.022 5.733L0 1.593L0.978 0L8 4.141L15.023 0L16 1.593Z"/></svg></span></span>
+    <span class="tab-date-btn">${CAL_ICON}<span class="tab-date-label">${nowMode ? "Сейчас" : dateLabel(activeDate)}</span><span class="tab-date-caret"><svg viewBox="0 0 16 6" width="12" height="5"><path fill="currentColor" d="M16 1.593L8.978 5.733C8.376 6.088 7.624 6.088 7.022 5.733L0 1.593L0.978 0L8 4.141L15.023 0L16 1.593Z"/></svg></span></span>
     <div class="tab-date-menu">${items}</div>
   </div>`;
 }
@@ -85,11 +89,12 @@ renderTabs();
 tabsEl.addEventListener("click", (e) => {
   const di = e.target.closest(".td-item");
   if (di) {
-    activeDate = +di.dataset.off;
+    nowMode = di.dataset.off === "now";
+    if (!nowMode) activeDate = +di.dataset.off;
     const label = tabsEl.querySelector(".tab-date-label");
-    if (label) label.textContent = dateLabel(activeDate);
+    if (label) label.textContent = nowMode ? "Сейчас" : dateLabel(activeDate);
     tabsEl.querySelectorAll(".td-item").forEach((b) => b.classList.toggle("is-active", b === di));
-    day = activeDate === 0 ? 0 : 1;
+    day = nowMode || activeDate === 0 ? 0 : 1;
     updateDayBtn?.();
     if (channels.length) renderTab();
     tabsEl.querySelector(".tab-date")?.blur();
@@ -173,13 +178,21 @@ const skeletonRows = () =>
   Array.from({ length: 5 }, () => rowHtml("—", "…")).join("");
 
 function channelCard(ch) {
-  return `<article class="card" data-id="${ch.id}">
+  const v4c = isV4c();
+  // Вариант 3 (макет 1295): в большом постере — кадр текущей передачи (ставится в
+  // fillCard), ниже — строка с лого и названием канала, затем расписание.
+  const chanRow = v4c
+    ? `<div class="card-chan"><span class="card-chan-logo"><img loading="lazy" src="${channelThumb(ch)}" alt=""></span><span class="card-chan-name">${ch.title}</span></div>`
+    : "";
+  return `<article class="card${v4c ? " card-v4c" : ""}" data-id="${ch.id}">
     <a class="card-body" href="player.html?id=${ch.id}">
       <div class="poster">
         <img class="poster-img-el" loading="lazy" src="${channelCover(ch)}" alt="${ch.title}">
         <span class="poster-left" data-left="${ch.id}" hidden></span>
+        ${v4c ? `<span class="v4c-pgrad"></span><span class="v4c-pt" data-pt="${ch.id}"></span><span class="v4c-pm" data-pm="${ch.id}" hidden></span>` : ""}
         <div class="prog-line" data-prog="${ch.id}" hidden><span class="prog-fill"></span></div>
       </div>
+      ${chanRow}
       <div class="sched" data-sched="${ch.id}">${skeletonRows()}</div>
     </a>
     <div class="card-foot"><a class="allprog" href="schedule.html?id=${ch.id}">Вся телепрограмма</a></div>
@@ -211,7 +224,11 @@ async function fillCard(ch) {
       const PAST_T = ["11:50", "12:25"];
       const UP_T = ["13:40", "14:25", "15:10", "16:05", "17:20", "18:40"];
       const nm = (k) => `${DEMO[(ch.id * 7 + k * 13) % DEMO.length]}, ${restrict}+`;
-      const rows = [
+      // Фильтр «Сейчас» — только текущая передача + 2 следующие (без прошедших).
+      const rows = nowMode ? [
+        { t: "13:00", ttl: tc.title, now: true, past: false },
+        ...UP_T.slice(0, 3).map((t, i) => ({ t, ttl: nm(i + 3), now: false, past: false })),
+      ] : [
         ...PAST_T.map((t, i) => ({ t, ttl: nm(i + 1), now: false, past: true })),
         { t: "13:00", ttl: tc.title, now: true, past: false },
         ...UP_T.map((t, i) => ({ t, ttl: nm(i + 3), now: false, past: false })),
@@ -225,11 +242,22 @@ async function fillCard(ch) {
       });
       schedEl.innerHTML = rows.map((r) => rowHtml(r.t, r.ttl, r.now, r.ivi, r.past)).join("");
     } else {
-      const rows = [[mskTime(tc.start), tc.title, true], ...upcoming];
+      let rows = [[mskTime(tc.start), tc.title, true], ...upcoming];
+      if (nowMode) rows = rows.slice(0, 4); // текущая + 3 следующие
       schedEl.innerHTML = rows.map((r) => rowHtml(r[0], r[1], r[2])).join("");
     }
-    // Обложка карточки на странице — логотип/брендовая плашка канала (channelCover в разметке).
-    // Чип «ещё N минут» на постере не показываем.
+    // Вариант 3 — в большом постере кадр передачи, которая сейчас в эфире (макет 1295).
+    if (isV4c()) {
+      const posterImg = grid.querySelector(`.card[data-id="${ch.id}"] .poster-img-el`);
+      const still = telecastThumb(tc);
+      if (posterImg && still) posterImg.src = still;
+      // Название передачи слева снизу (как в PiP) + чипс «ещё N мин» справа снизу.
+      const pt = grid.querySelector(`.v4c-pt[data-pt="${ch.id}"]`);
+      if (pt) pt.textContent = tc.title;
+      const pm = grid.querySelector(`.v4c-pm[data-pm="${ch.id}"]`);
+      const min = tc.end ? Math.round((new Date(tc.end) - Date.now()) / 60000) : 0;
+      if (pm && min > 0 && min < 600) { pm.textContent = `ещё ${min} мин`; pm.hidden = false; }
+    }
     // Вариант 3 — таймлайн под постером: середина эфира (без привязки к реальному времени).
     const line = grid.querySelector(`.prog-line[data-prog="${ch.id}"]`);
     if (line && getMode() === "v3" && tc.start && tc.end) {
@@ -448,11 +476,11 @@ toggle.addEventListener("click", () => {
     thumb = localStorage.getItem("v4bCurrentThumb") || "";
     title = localStorage.getItem("v4bCurrentTitle") || "Прямой эфир";
   } catch {}
-  if (mode !== "v4b" || !thumb) return;
+  if ((mode !== "v4b" && mode !== "v4c") || !thumb) return;
   // Рисуем сразу тем же кадром, что был в плеере, — бесшовная передача без мигания.
   const pip = document.createElement("div");
   pip.className = "v4b-pip";
-  pip.innerHTML = `<img class="v4b-pip-bg" src="${thumb}" alt=""><span class="v4b-pip-grad"></span>
+  pip.innerHTML = `<img class="v4b-pip-bg" src="${thumb}" alt=""><video class="v4b-pip-vid" muted loop autoplay playsinline preload="auto" src="assets/channel-preview.mov"></video><span class="v4b-pip-grad"></span>
     <span class="v4b-pip-title">${title}</span>
     <button class="v4b-pip-expand" aria-label="Скрыть">
       <svg viewBox="0 0 20 20" width="16" height="16"><path fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" d="M5 5l10 10M15 5l-10 10"/></svg>
@@ -465,3 +493,23 @@ toggle.addEventListener("click", () => {
     location.href = "index.html";
   });
 })();
+
+// ---- Видео-превью эфира при наведении на постер канала (единый элемент) ----
+const pgVideo = document.createElement("video");
+pgVideo.className = "pg-hover-video";
+pgVideo.muted = true; pgVideo.loop = true; pgVideo.playsInline = true; pgVideo.preload = "auto";
+pgVideo.src = "assets/channel-preview.mov";
+grid.addEventListener("mouseover", (e) => {
+  const poster = e.target.closest(".poster");
+  if (!poster || poster.contains(pgVideo)) return;
+  poster.appendChild(pgVideo);
+  requestAnimationFrame(() => pgVideo.classList.add("is-on"));
+  pgVideo.play().catch(() => {});
+});
+grid.addEventListener("mouseout", (e) => {
+  const poster = e.target.closest(".poster");
+  if (!poster || !poster.contains(pgVideo)) return;
+  if (poster.contains(e.relatedTarget)) return;
+  pgVideo.classList.remove("is-on");
+  pgVideo.pause();
+});

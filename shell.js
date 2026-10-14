@@ -13,9 +13,10 @@ const MODES = [
   { id: "v3", label: "Вариант 3", sub: "Гипотеза C", hidden: true },
   { id: "v4", label: "Вариант 1", sub: "Гипотеза D" },
   { id: "v4b", label: "Вариант 2", sub: "Копия для доработки" },
+  { id: "v4c", label: "Вариант 3", sub: "Одноряд «Сейчас в эфире»" },
 ];
-// v4b визуально — копия v4: отдаём ему data-variant="v4", различаем через data-copy.
-const variantAttr = (id) => (id === "v4b" ? "v4" : id);
+// v4b/v4c визуально на базе v4: отдаём им data-variant="v4", различаем через data-copy.
+const variantAttr = (id) => (id === "v4b" || id === "v4c" ? "v4" : id);
 
 // ---------- Навигация прототипа: старая / новая (меняет только шапку-навигацию) ----------
 const NAV_KEY = "ivi-proto-nav";

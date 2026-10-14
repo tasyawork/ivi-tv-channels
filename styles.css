@@ -651,9 +651,9 @@ html[data-mode="v3"] .tab-date:focus-within .tab-date-btn {
 /* Вариант 4 — «живые» эмодзи-табы (макет WBH): стеклянная пилюля + текст + 3D-эмодзи */
 html[data-variant="v4"] .tabs { gap: 8px; align-items: center; border-bottom: none; }
 html[data-variant="v4"] .tab {
-  display: inline-flex; align-items: center; gap: 10px;
-  height: 48px; padding: 0 14px 0 20px; border-radius: 999px;
-  font-size: 16px; line-height: 20px; font-weight: 500; letter-spacing: -0.01em;
+  display: inline-flex; align-items: center; gap: 7px;
+  height: 38px; padding: 0 10px 0 14px; border-radius: 999px;
+  font-size: 14px; line-height: 18px; font-weight: 500; letter-spacing: -0.01em;
   color: #fff;
   background: linear-gradient(167deg, #ffffff38 -32%, #ffffff1a 20%, #ffffff1a 80%, #ffffff38 132%);
   backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px);
@@ -666,17 +666,11 @@ html[data-variant="v4"] .tab.is-active {
   background: linear-gradient(167deg, #ffffff66 -32%, #ffffff3d 20%, #ffffff3d 80%, #ffffff66 132%);
 }
 html[data-variant="v4"] .tab.is-active::after { display: none; } /* без подчёркивания — вид пилюли */
-html[data-variant="v4"] .tab-emoji { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; flex-shrink: 0; }
-html[data-variant="v4"] .tab-emoji img { width: 28px; height: 28px; object-fit: contain; display: block; }
-/* Вариант 2 — табы категорий немного меньше. */
-html[data-copy="v4b"] .tab { height: 40px; padding: 0 12px 0 16px; font-size: 14px; gap: 8px; }
-html[data-copy="v4b"] .tab-emoji { width: 23px; height: 23px; }
-html[data-copy="v4b"] .tab-emoji img { width: 23px; height: 23px; }
-/* Таб выбора даты по высоте как остальные табы (Вариант 2). */
-html[data-copy="v4b"] #tabs .tab-date-btn { height: 40px; padding: 0 16px; font-size: 14px; }
-/* Таб выбора дня — в том же стиле стеклянной пилюли */
+html[data-variant="v4"] .tab-emoji { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; flex-shrink: 0; }
+html[data-variant="v4"] .tab-emoji img { width: 22px; height: 22px; object-fit: contain; display: block; }
+/* Таб выбора дня — в том же стиле стеклянной пилюли, по высоте как табы категорий */
 html[data-variant="v4"] .tab-date-btn {
-  height: 48px; padding: 0 20px; border-radius: 999px;
+  height: 38px; padding: 0 16px; font-size: 14px; border-radius: 999px;
   background: linear-gradient(167deg, #ffffff38 -32%, #ffffff1a 20%, #ffffff1a 80%, #ffffff38 132%);
   backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px);
 }
@@ -922,14 +916,12 @@ html:is([data-mode="v2"],[data-mode="v3"]) #v1Body { padding-bottom: 88px; }
 .pv-ch-prog { font-size: 15px; line-height: 19px; font-weight: 700; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pv-ch-genre { font-size: 13px; line-height: 16px; color: var(--tx-56); }
 
-/* Вариант 2: свитч ТВ онлайн/Программа — по центру между шапкой и табами категорий
-   (равные зазоры); первую галерею под плеером поднимаем, чтобы она подглядывала. */
-html[data-copy="v4b"] .intro { margin-top: 18px; margin-bottom: 2px; }
-html[data-copy="v4b"] #tabs { margin-top: 12px; }
-/* Нормальные отступы у табов, в т.ч. при залипании во время скролла. */
-html[data-copy="v4b"] .tabs-bar { padding: 4px 0 16px; }
-html[data-copy="v4b"] #v1Body > .v4b-player { margin-top: 10px; }
-html[data-copy="v4b"] .v4b-player .watch { margin-top: 0; }
+/* Варианты 2 и 3: равные и небольшие зазоры между шапкой · заголовком · табами · плеером (16px). */
+html:is([data-copy="v4b"],[data-copy="v4c"]) .intro { margin-top: 16px; margin-bottom: 0; }
+html:is([data-copy="v4b"],[data-copy="v4c"]) #tabs { margin-top: 16px; }
+html:is([data-copy="v4b"],[data-copy="v4c"]) .tabs-bar { padding: 0 0 16px; }
+html:is([data-copy="v4b"],[data-copy="v4c"]) #v1Body > .v4b-player { margin-top: 0; }
+html:is([data-copy="v4b"],[data-copy="v4c"]) .v4b-player .watch { margin-top: 0; }
 html[data-copy="v4b"] #v4bFeed > .gal:first-child { margin-top: 30px; }
 
 /* PiP: плеер уходит в левый нижний угол при «Программе передач». */
@@ -945,13 +937,36 @@ html[data-copy="v4b"] #v4bFeed > .gal:first-child { margin-top: 30px; }
 .v4b-pip {
   position: fixed; left: 24px; bottom: 24px; z-index: 300;
   width: 320px; height: 180px; border-radius: 16px; overflow: hidden;
-  background: #000; box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6); cursor: pointer;
+  background: #000; cursor: pointer;
+  /* более заметная тень снизу, чтобы окошко выделялось на фоне */
+  box-shadow: 0 28px 60px -8px rgba(0, 0, 0, 0.85), 0 10px 24px rgba(0, 0, 0, 0.6);
 }
-.v4b-pip-bg { width: 100%; height: 100%; object-fit: cover; }
+.v4b-pip-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.v4b-pip-vid { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .v4b-pip-grad { position: absolute; inset: 0; background: linear-gradient(0deg, rgba(0,0,0,.72) 0%, transparent 42%); pointer-events: none; }
 .v4b-pip-title { position: absolute; left: 14px; right: 44px; bottom: 12px; color: #fff; font-size: 14px; font-weight: 600; line-height: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .v4b-pip-expand { position: absolute; top: 10px; right: 10px; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(0,0,0,.5); backdrop-filter: blur(6px); }
 .v4b-pip:hover .v4b-pip-expand { background: rgba(0,0,0,.72); }
+
+/* Вариант 3 — карточка канала на Программе передач (макет 1295): лого + название. */
+.card-chan { display: flex; align-items: center; gap: 10px; margin: 12px 0 4px; }
+.card-chan-logo { flex-shrink: 0; width: 40px; height: 40px; border-radius: 8px; overflow: hidden; background: var(--card); }
+.card-chan-logo img { width: 100%; height: 100%; object-fit: cover; }
+.card-chan-name { font-size: 16px; line-height: 20px; font-weight: 700; color: #fff; }
+/* Видео-превью при наведении на постер (Программа передач) — над картинкой, под подписями. */
+.poster .pg-hover-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; opacity: 0; transition: opacity .3s ease; pointer-events: none; }
+.poster .pg-hover-video.is-on { opacity: 1; }
+/* Подписи на большом постере (Вариант 3): название слева снизу (как в PiP) — ТОЛЬКО при
+   наведении; чипс «ещё N мин» справа снизу — всегда. */
+.v4c-pgrad { position: absolute; left: 0; right: 0; bottom: 0; height: 58%; z-index: 2; pointer-events: none;
+  background: linear-gradient(0deg, rgba(0,0,0,.82) 0%, rgba(0,0,0,.35) 42%, transparent 100%);
+  opacity: 0; transition: opacity .25s ease; }
+.v4c-pt { position: absolute; left: 14px; right: 96px; bottom: 12px; z-index: 2; color: #fff; font-size: 14px; font-weight: 600; line-height: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  opacity: 0; transition: opacity .25s ease; }
+.poster:hover .v4c-pgrad, .poster:hover .v4c-pt { opacity: 1; }
+.v4c-pm { position: absolute; right: 12px; bottom: 11px; z-index: 2; padding: 3px 9px; border-radius: 999px; background: rgba(0,0,0,.62); color: #fff; font-size: 12px; line-height: 15px; font-weight: 600; white-space: nowrap; }
+/* PiP меньше на небольших экранах; на больших — как сейчас (320×180). */
+@media (max-width: 1280px) { .v4b-pip { width: 248px; height: 140px; } }
 
 .player {
   position: relative;
@@ -2088,6 +2103,27 @@ html:is([data-mode="v2"],[data-mode="v3"]) .gal-grid::-webkit-scrollbar { displa
 /* «Любимые каналы» — один этаж (а не два) */
 html:is([data-mode="v1"],[data-mode="v2"],[data-mode="v3"]) .fav-gal .gal-grid { grid-template-rows: 1fr; }
 
+/* ===== Вариант 3 (макет 125S) — одноряд «Сейчас в эфире»: постер эфира +
+   мета снизу всегда, при наведении постер меняется на кадр текущего эфира. ===== */
+html[data-copy="v4c"] .gal-grid {
+  grid-template-rows: 1fr;
+  grid-auto-columns: calc((100% - 4 * 16px) / 5);
+  gap: 16px; padding: 4px 12px 10px; margin: 0 -12px;
+}
+.v4c-cell { display: flex; flex-direction: column; }
+.v4c-thumb { position: relative; display: block; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; background: var(--card); }
+.v4c-img, .v4c-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.v4c-video { z-index: 1; opacity: 0; transition: opacity .3s ease; pointer-events: none; }
+.v4c-video.is-on { opacity: 1; }
+.v4c-mins { position: absolute; right: 8px; bottom: 8px; z-index: 2; padding: 3px 9px; border-radius: 999px;
+  background: rgba(0, 0, 0, 0.62); color: #fff; font-size: 12px; line-height: 15px; font-weight: 600; white-space: nowrap; }
+.v4c-meta { display: flex; align-items: center; gap: 10px; margin-top: 10px; text-decoration: none; }
+.v4c-logo { flex-shrink: 0; width: 46px; height: 28px; border-radius: 6px; overflow: hidden; background: var(--card); }
+.v4c-logo img { width: 100%; height: 100%; object-fit: cover; }
+.v4c-txt { min-width: 0; display: flex; flex-direction: column; }
+.v4c-name { font-size: 15px; line-height: 19px; font-weight: 600; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v4c-prog { font-size: 13px; line-height: 17px; color: var(--tx-56); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 /* Вариант 2 — наведение: поверх постера проявляется мета-оверлей «сейчас в
    эфире». Постер не гаснет в ноль, а остаётся размытым под стеклом (материал
    в духе Apple: полупрозрачная заливка + backdrop-blur), без дропдауна. */
@@ -2742,3 +2778,27 @@ html[data-device="mobile"] .page .date-nav { width: 38px; height: 38px; }
 
 /* Новая навигация: старую шапку скрываем, показываем новое меню (вставляется shell.js) */
 html[data-nav="new"] .topbar { display: none; }
+
+/* ======================================================================
+   Адаптивная плотная вёрстка: контейнер использует всю ширину экрана, карточки
+   держат размер (НЕ увеличиваются), а на широких экранах их больше в ряд —
+   показываем больше информации. Между постерами всегда 8px.
+   ====================================================================== */
+:root { --maxw: 3600px; --gutter: 28px; }
+
+/* Скролл-галереи (ТВ онлайн/главная, Варианты 2–3): карточка ≤272px, гап 8px.
+   На обычном экране — ~5 в ряд, на широком их просто больше (а не крупнее). */
+html:is([data-mode="v2"],[data-mode="v3"]) .gal-grid {
+  grid-auto-columns: min(272px, calc((100% - 4 * 8px) / 5));
+}
+html[data-copy="v4c"] .gal-grid {
+  gap: 8px;
+  grid-auto-columns: min(272px, calc((100% - 4 * 8px) / 5));
+}
+
+/* Сетка каналов (Программа передач) — доливаем колонки: 4 на обычном, 5+ на широком. */
+.page .grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 8px; }
+
+/* Плотнее по вертикали — меньше пустого пространства между блоками. */
+html:is([data-mode="v2"],[data-mode="v3"]) #v1Body > .gal { margin-top: 28px; }
+html[data-copy="v4c"] #v4bFeed > .gal:first-child { margin-top: 18px; }
