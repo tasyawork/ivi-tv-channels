@@ -11,12 +11,17 @@ const MODES = [
   { id: "v1", label: "Вариант 1", sub: "Гипотеза A", disabled: true, hidden: true },
   { id: "v2", label: "Вариант 2", sub: "Гипотеза B", hidden: true },
   { id: "v3", label: "Вариант 3", sub: "Гипотеза C", hidden: true },
-  { id: "v4", label: "Вариант 1", sub: "Гипотеза D" },
-  { id: "v4b", label: "Вариант 2", sub: "Копия для доработки" },
-  { id: "v4c", label: "Вариант 3", sub: "Одноряд «Сейчас в эфире»" },
+  // Прежние гипотезы (v4 «Вариант 1», v4b/v4c) пока скрыты из интерфейса — код оставляем.
+  { id: "v4", label: "Вариант 1", sub: "Гипотеза D", hidden: true },
+  { id: "v4b", label: "Вариант 2 (архив)", sub: "Плеер + список каналов", hidden: true },
+  { id: "v4c", label: "Одноряд «Сейчас в эфире»", sub: "", hidden: true },
+  // В интерфейсе — только «Вариант 1» (бывший В3, макет) и «Вариант 2» (пока его дубль).
+  { id: "v4d", label: "Вариант 1", sub: "Плеер + лента каналов (макет)" },
+  { id: "v4e", label: "Вариант 2", sub: "Дубль Варианта 1 — для доработки" },
+  { id: "v4f", label: "Вариант 3", sub: "Дубль Варианта 2 — для доработки" },
 ];
-// v4b/v4c визуально на базе v4: отдаём им data-variant="v4", различаем через data-copy.
-const variantAttr = (id) => (id === "v4b" || id === "v4c" ? "v4" : id);
+// v4b/v4c/v4d/v4e визуально на базе v4: отдаём им data-variant="v4", различаем через data-copy.
+const variantAttr = (id) => (["v4b", "v4c", "v4d", "v4e", "v4f"].includes(id) ? "v4" : id);
 
 // ---------- Навигация прототипа: старая / новая (меняет только шапку-навигацию) ----------
 const NAV_KEY = "ivi-proto-nav";
@@ -70,7 +75,7 @@ function setNav(nav) {
   document.querySelectorAll(".nav-seg").forEach((b) => b.classList.toggle("is-active", b.dataset.nav === nav));
   renderModeTabs();
   // Если текущий режим скрыт/недоступен — ставим «Вариант 1» (v4).
-  if (!MODES.find((m) => m.id === getMode() && !m.disabled && !m.hidden)) setMode("v4");
+  if (!MODES.find((m) => m.id === getMode() && !m.disabled && !m.hidden)) setMode("v4d");
   // Переход на соответствующую главную: новая — новая главная, старая — ТВ онлайн.
   const target = nav === "new" ? "main.html" : "index.html";
   if (!location.pathname.endsWith("/" + target) && !location.pathname.endsWith(target)) {
@@ -168,7 +173,7 @@ function build() {
   // Стартуем с сохранённого режима; если он скрыт/отключён (прежние В1–В3, As is) —
   // откатываемся на «Вариант 1» (v4).
   let startMode = getMode();
-  if (!MODES.find((m) => m.id === startMode && !m.disabled && !m.hidden)) startMode = "v4";
+  if (!MODES.find((m) => m.id === startMode && !m.disabled && !m.hidden)) startMode = "v4d";
   setMode(startMode);
   renderModeTabs();
   setDevice("desktop"); // мобайл временно скрыт
@@ -183,7 +188,7 @@ function build() {
     tabsBar.parentNode.insertBefore(sentinel, tabsBar);
     new IntersectionObserver(
       ([e]) => tabsBar.classList.toggle("is-stuck", !e.isIntersecting),
-      { threshold: 0 }
+      { threshold: 0, rootMargin: "-16px 0px 0px 0px" } // = top у .tabs-bar
     ).observe(sentinel);
   }
 

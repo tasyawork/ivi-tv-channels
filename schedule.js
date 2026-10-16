@@ -172,7 +172,7 @@ function renderList() {
     // По макету ZGQ у текущего эфира кнопка «В эфир» стоит ПОД описанием (в колонке
     // инфо, слева); у остальных Иви-передач кнопка «Смотреть на Иви» — справа.
     const watchBtn = blue ? `<a class="fe-watch" href="https://www.ivi.ru/" target="_blank" rel="noopener">${r.now ? "В эфир" : "Смотреть на Иви"}</a>` : "";
-    return `<div class="fe-card${r.now ? " is-now" : ""}${r.past ? " is-past" : ""}">
+    return `<div class="fe-card${r.now ? " is-now" : ""}${blue ? " is-ivi" : ""}${r.past ? " is-past" : ""}">
       <div class="fe-timecol">
         <span class="fe-time">${r.time}</span>
         ${r.now ? `<span class="fe-onair">${BCAST} в эфире</span>` : ""}
@@ -202,7 +202,10 @@ function renderList() {
 function buildDayTabs() {
   const base = new Date();
   const wdFull = ["воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"];
-  const items = [`<button class="day-tab" data-i="now">сейчас</button>`];
+  // В шторке (embed) таб «сейчас» не показываем.
+  const items = document.documentElement.classList.contains("is-embed")
+    ? []
+    : [`<button class="day-tab" data-i="now">сейчас</button>`];
   for (let off = -1; off <= 6; off++) {
     const d = new Date(base); d.setDate(base.getDate() + off);
     const dd = `${d.getDate()}.${d.getMonth() + 1}`;
@@ -236,7 +239,7 @@ function renderNowAir(channels) {
   const list = channels.slice(0, 10);
   el.innerHTML = `<h2 class="gal-head">Сейчас в эфире <span class="chev">›</span></h2>
     <div class="fav-row">${list.map((ch) => `
-      <a class="fav-card" href="player.html?id=${ch.id}" data-id="${ch.id}">
+      <a class="fav-card" href="index.html?ch=${ch.id}" data-id="${ch.id}">
         <div class="fav-thumb"><img class="fav-img" loading="lazy" src="${channelThumb(ch)}" alt=""><span class="fav-chip" hidden></span></div>
         <div class="fav-meta"><div class="fav-ch">${ch.title}</div><div class="fav-prog">В эфире</div></div>
       </a>`).join("")}</div>
@@ -273,10 +276,17 @@ async function fillNowTile(card) {
 }
 
 // ---- Закрыть ----
-$("schClose").addEventListener("click", () => {
-  if (history.length > 1) history.back();
-  else location.href = "index.html";
-});
+// В режиме шторки (embed=1 внутри iframe) своя кнопка закрытия не нужна — закрывает шторка;
+// контент делаем компактнее (класс is-embed на <html>).
+if (new URLSearchParams(location.search).get("embed")) {
+  document.documentElement.classList.add("is-embed");
+  $("schClose").style.display = "none";
+} else {
+  $("schClose").addEventListener("click", () => {
+    if (history.length > 1) history.back();
+    else location.href = "index.html";
+  });
+}
 
 // ---- Развернуть описание ----
 $("schExpand").addEventListener("click", () => {

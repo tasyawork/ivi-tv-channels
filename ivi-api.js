@@ -147,6 +147,20 @@ export const PLAYER_TABS = TABS;
 
 export function filterByTag(channels, tag) {
   if (!tag) return channels;
+  // «Мои каналы»: сначала залайканные (в порядке лайка), затем «те, что смотрели долго» —
+  // кино-каналы, добор остальными до 12.
+  if (tag === "__my") {
+    let fav = [];
+    try { fav = JSON.parse(localStorage.getItem("ivi-fav-channels") || "[]"); } catch {}
+    const favSet = new Set(fav.map(String));
+    const byId = new Map(channels.map((c) => [String(c.id), c]));
+    const liked = fav.map((id) => byId.get(String(id))).filter(Boolean);
+    const cinema = channels.filter((c) => !favSet.has(String(c.id)) && (c.tags || []).includes("каналы с фильмами и сериалами"));
+    const out = [...liked, ...cinema];
+    const have = new Set(out.map((c) => String(c.id)));
+    for (const c of channels) { if (out.length >= 12) break; if (!have.has(String(c.id))) { out.push(c); have.add(String(c.id)); } }
+    return out;
+  }
   return channels.filter((c) => (c.tags || []).includes(tag));
 }
 

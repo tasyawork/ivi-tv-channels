@@ -12,11 +12,18 @@ const isV1like = () => ["v1", "v2", "v3"].includes(getMode());
 const isV2like = () => getMode() === "v2" || getMode() === "v3"; // v3 = копия v2
 // Вариант 2 прототипа (копия v4): data-copy="v4b". На ТВ онлайн — встроенный плеер.
 const isV4b = () => document.documentElement.getAttribute("data-copy") === "v4b";
-// Вариант 3 (копия v4): одноряд-галереи «Сейчас в эфире» (мета снизу, hover → эфир).
-const isV4c = () => document.documentElement.getAttribute("data-copy") === "v4c";
-// Встроенный плеер на ТВ онлайн — в Вариантах 2 и 3.
+// Одноряд-галереи «Сейчас в эфире» (мета снизу, hover → эфир). Используют и
+// переименованный Вариант 2 (v4c), и новый Вариант 3 (v4d) — у них одинаковые галереи.
+const isV4c = () => ["v4c", "v4d", "v4e", "v4f"].includes(document.documentElement.getAttribute("data-copy"));
+// Макет 12AX (над плеером — лента каналов, справа — программа): «Вариант 1» (v4d)
+// и его дубль «Вариант 2» (v4e). v4e пока полностью идентичен v4d.
+const isV4d = () => ["v4d", "v4e", "v4f"].includes(document.documentElement.getAttribute("data-copy"));
+// Встроенный плеер на ТВ онлайн — в Вариантах 2 и 3 (v4c включает v4d).
 const hasPlayer = () => isV4b() || isV4c();
-const tabList = () => (isV1like() ? TABS : HOME_TABS);
+// Вариант 3 — после «Все каналы» добавляем «Мои каналы» (псевдо-тег __my = подборка).
+const MY_TAB = { label: "Мои каналы", tag: "__my", heading: "Мои каналы" };
+const V4D_TABS = [TABS[0], MY_TAB, ...TABS.slice(1)];
+const tabList = () => (isV4d() ? V4D_TABS : isV1like() ? TABS : HOME_TABS);
 // Стрелка-шеврон для подсказок скролла подборок (макет JOP-0).
 const ARROW_SVG = '<svg viewBox="0 0 12 32" width="11" height="29"><path fill="currentColor" d="M11.607 14.626C12.131 15.461 12.131 16.539 11.607 17.374L2.425 32L0 30.352L9.01 16L0 1.648L2.425 0L11.607 14.626Z"/></svg>';
 const tabsEl = document.getElementById("tabs");
@@ -102,7 +109,7 @@ function renderRail(id, tag, limit = 18) {
 /* ============ Вариант 1: лента «ТВ онлайн», зависящая от вкладки ============ */
 // «Все каналы» — обзорная лента; конкретная категория — hero-карусель +
 // подкатегорийные двойные галереи (+ блок трансляций / галерея шоу).
-const headingFor = (tag) => (TABS.find((t) => t.tag === tag) || {}).heading || "Каналы";
+const headingFor = (tag) => ([...TABS, MY_TAB].find((t) => t.tag === tag) || {}).heading || "Каналы";
 
 // Обзорная лента (вкладка «Все каналы»).
 const OVERVIEW = [
@@ -158,6 +165,23 @@ const PLAYER_CONTROLS = `
   </div>`;
 
 const PV_GENRES = ["Сериал", "Ток-шоу", "Новости", "Кино", "Шоу", "Спорт", "Мультфильм", "Реалити"];
+// Длинные названия передач для программы справа от плеера — чередуем с короткими,
+// чтобы были и развёрнутые строки, и лаконичные.
+const EPG_LONG = [
+  "Большая премьера. Многосерийный детектив «Тайны следствия. Новый сезон»",
+  "Церемония вручения национальной телевизионной премии «Золотой орёл»",
+  "Документальный фильм «Великие династии России. Романовы и их эпоха»",
+  "Международный турнир по фигурному катанию. Произвольная программа. Прямой эфир",
+  "Юбилейный вечер народного артиста в Государственном Кремлёвском дворце",
+  "Остросюжетный художественный фильм «Поезд идёт на восток» (с субтитрами)",
+  "Специальный репортаж: как устроена современная космическая отрасль страны",
+  "Музыкальное шоу «Главная сцена страны»: финал сезона и объявление победителя",
+];
+const EPG_MED = [
+  "Ток-шоу «Пусть говорят»", "Вечерние новости с сурдопереводом", "Поле чудес. Юбилейный выпуск",
+  "Сериал «Московская сага»", "Жить здорово! Выпуск недели", "Кино: комедия «Иван Васильевич меняет профессию»",
+];
+const EPG_SHORT = ["Новости", "Погода", "Вести", "Время", "Итоги дня", "Прогноз погоды", "Сегодня", "Доброе утро"];
 let v4bPlayer = null; // { setChannelById } — переключение канала по клику из галерей (Вариант 2)
 
 function fillPlayerBlock(el, tag) {
@@ -196,8 +220,15 @@ function fillPlayerBlock(el, tag) {
     const nowRow = tc
       ? `<div class="epg-row is-now"><span class="epg-time">${mskTime(tc.start)}</span><span class="epg-title">${tc.title}</span><span class="epg-underline"></span></div>`
       : "";
+    // Чередуем длину названий: короткие чаще, средние и длинные — реже (длинных немного).
     const demo = demoSchedule(tc?.end, restrict, 14)
-      .map((r, i) => `<div class="epg-row is-demo"><span class="epg-time">${r.time}</span><span class="epg-title">${r.title}</span>${i % 4 === 1 ? '<span class="epg-live">Смотреть сейчас</span>' : ""}</div>`)
+      .map((r, i) => {
+        const base = i % 4 === 2 ? EPG_LONG[(i >> 2) % EPG_LONG.length]
+          : i % 4 === 0 ? EPG_MED[(i >> 2) % EPG_MED.length]
+          : EPG_SHORT[i % EPG_SHORT.length];
+        const title = `${base}, ${restrict}+`;
+        return `<div class="epg-row is-demo"><span class="epg-time">${r.time}</span><span class="epg-title">${title}</span>${i % 4 === 1 ? '<span class="epg-live">Смотреть сейчас</span>' : ""}</div>`;
+      })
       .join("");
     epgEl.innerHTML = nowRow + demo;
   }
@@ -239,6 +270,16 @@ function fillPlayerBlock(el, tag) {
     epgEl.hidden = !epg;
     moveInd(seg);
   });
+  // Вариант 3 (макет 12AX) — справа только «Программа канала», без тоггла; каналы
+  // переключаются горизонтальной лентой над плеером. Снизу — «Вся телепрограмма».
+  if (isV4d()) {
+    const epgSeg = switchEl.querySelector('[data-view="epg"]');
+    switchEl.querySelectorAll(".pv-seg").forEach((s) => s.classList.toggle("is-active", s === epgSeg));
+    listEl.hidden = true; epgEl.hidden = false;
+    const allprog = document.createElement("a");
+    allprog.className = "pv-allprog"; allprog.href = "program.html"; allprog.textContent = "Телепрограмма";
+    el.querySelector(".pv-side").appendChild(allprog);
+  }
   requestAnimationFrame(() => moveInd(switchEl.querySelector(".pv-seg.is-active")));
   // Правая панель — список каналов (макет 10W9): лого + название + передача + жанр.
   listEl.innerHTML = list.map((c, i) => `<a class="pv-ch${c.id === current.id ? " is-active" : ""}" href="player.html?id=${c.id}" data-id="${c.id}">
@@ -283,20 +324,67 @@ const v4cPreview = document.createElement("video");
 v4cPreview.className = "v4c-video";
 v4cPreview.muted = true; v4cPreview.loop = true; v4cPreview.playsInline = true; v4cPreview.preload = "auto";
 v4cPreview.src = "assets/channel-preview.mov";
-document.getElementById("v1Body")?.addEventListener("mouseover", (e) => {
-  if (!isV4c()) return;
-  const thumb = e.target.closest(".v4c-thumb");
-  if (!thumb || thumb.contains(v4cPreview)) return;
-  thumb.appendChild(v4cPreview);
-  requestAnimationFrame(() => v4cPreview.classList.add("is-on"));
-  v4cPreview.play().catch(() => {});
-});
-document.getElementById("v1Body")?.addEventListener("mouseout", (e) => {
-  const thumb = e.target.closest(".v4c-thumb");
-  if (!thumb || !thumb.contains(v4cPreview)) return;
-  if (thumb.contains(e.relatedTarget)) return; // ещё внутри постера
+// Ховер по всей карточке (постер ИЛИ мета снизу): в постере играет эфир, а через
+// таймаут мета «переворачивается» (flip) на «Далее в HH:MM» + следующая передача.
+let v4cHoverCell = null, v4cFlipT = null;
+function v4cEnter(cell) {
+  const thumb = cell.querySelector(".v4c-thumb");
+  if (thumb && !thumb.contains(v4cPreview)) {
+    thumb.appendChild(v4cPreview);
+    requestAnimationFrame(() => v4cPreview.classList.add("is-on"));
+    v4cPreview.play().catch(() => {});
+  }
+  // Пока курсор на карточке — мета прокручивается по кругу ВВЕРХ (лицо → оборот →
+  // лицо-клон → мгновенный сброс в начало), как рулетка. Всегда в одну сторону.
+  clearTimeout(v4cFlipT);
+  const roll = cell.querySelector(".v4c-roll");
+  if (roll && cell.querySelector("[data-next-title]")?.textContent) {
+    const H = 36; // высота одного «лица» меты, = .v4c-face в CSS
+    const steps = roll.children.length - 1; // последнее «лицо» — клон первого (бесшовный сброс)
+    let pos = 0;
+    roll.style.transition = "none"; roll.style.transform = "translateY(0px)";
+    const advance = () => {
+      pos += 1;
+      roll.style.transition = "transform .5s cubic-bezier(.22,1,.36,1)";
+      roll.style.transform = `translateY(${-pos * H}px)`;
+      if (pos >= steps) setTimeout(() => { // показали клон-лицо — бесшовно вернулись в начало
+        roll.style.transition = "none"; roll.style.transform = "translateY(0px)"; void roll.offsetHeight; pos = 0;
+      }, 520);
+      v4cFlipT = setTimeout(advance, 3000); // далее крутим раз в 3 секунды
+    };
+    v4cFlipT = setTimeout(advance, 1000);   // первая смена — через 1 секунду
+  }
+}
+function v4cLeave(cell) {
+  clearTimeout(v4cFlipT);
+  const roll = cell.querySelector(".v4c-roll");
+  if (roll) { roll.style.transition = "none"; roll.style.transform = "translateY(0px)"; }
   v4cPreview.classList.remove("is-on");
   v4cPreview.pause();
+}
+// Клик по сердечку на постере — добавить/убрать канал из избранного (не открывая канал).
+document.getElementById("v1Body")?.addEventListener("click", (e) => {
+  const like = e.target.closest(".poster-like");
+  if (!like) return;
+  e.preventDefault(); e.stopPropagation();
+  const cell = like.closest("[data-id]");
+  if (cell) like.classList.toggle("is-fav", toggleFav(cell.dataset.id));
+}, true);
+document.getElementById("v1Body")?.addEventListener("mouseover", (e) => {
+  if (!isV4c()) return;
+  const cell = e.target.closest(".v4c-cell");
+  if (!cell || cell === v4cHoverCell) return;
+  if (v4cHoverCell) v4cLeave(v4cHoverCell);
+  v4cHoverCell = cell;
+  v4cEnter(cell);
+});
+document.getElementById("v1Body")?.addEventListener("mouseout", (e) => {
+  if (!v4cHoverCell) return;
+  const cell = e.target.closest(".v4c-cell");
+  if (cell !== v4cHoverCell) return;
+  if (cell.contains(e.relatedTarget)) return; // переход постер↔мета внутри карточки
+  v4cLeave(cell);
+  v4cHoverCell = null;
 });
 
 let showSeq = 0;
@@ -339,14 +427,229 @@ function renderFeedSections(container, tab) {
   if (isV2like()) container.querySelectorAll(".gal[data-cat]").forEach(addScrollHint);
 }
 
+// ---- Избранные каналы («Мои каналы») ----
+const FAV_KEY = "ivi-fav-channels";
+const getFavs = () => { try { return JSON.parse(localStorage.getItem(FAV_KEY) || "[]").map(String); } catch { return []; } };
+const isFav = (id) => getFavs().includes(String(id));
+function toggleFav(id) {
+  const favs = getFavs();
+  const i = favs.indexOf(String(id));
+  if (i >= 0) favs.splice(i, 1); else favs.unshift(String(id)); // новый лайк — первым
+  try { localStorage.setItem(FAV_KEY, JSON.stringify(favs)); } catch {}
+  return i < 0;
+}
+// Сердце (макет): дефолт — контур, солид — залитое малиновым.
+const HEART_SVG = '<svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>';
+// Иконка эфира (концентрические дуги + точка) — пульсирует у текущей передачи.
+const BCAST_SVG = '<svg viewBox="0 0 20 20" width="13" height="13"><path fill="currentColor" d="M4.6 4.6a7.6 7.6 0 000 10.8L3.3 16.7a9.4 9.4 0 010-13.4L4.6 4.6zm10.8-1.3a9.4 9.4 0 010 13.4l-1.3-1.3a7.6 7.6 0 000-10.8l1.3-1.3zM6.9 6.9a4.4 4.4 0 000 6.2L5.6 14.4a6.2 6.2 0 010-8.8L6.9 6.9zm6.2-1.3a6.2 6.2 0 010 8.8l-1.3-1.3a4.4 4.4 0 000-6.2l1.3-1.3zM10 8.3a1.7 1.7 0 110 3.4 1.7 1.7 0 010-3.4z"/></svg>';
+
+// Вариант 3 — горизонтальная лента каналов над плеером (макет 12QU: лого 64×40 +
+// название текущей передачи + прогресс). Клик переключает канал во встроенном плеере.
+function fillStrip(el, tag) {
+  if (!el) return;
+  const list = tag ? filterByTag(channels, tag) : channels;
+  el.innerHTML = list.map((c, i) => `<button class="v4d-chip${i === 0 ? " is-active" : ""}" data-id="${c.id}">
+    <span class="v4d-chip-logo"><img loading="lazy" src="${channelThumb(c)}" alt=""></span>
+    <span class="v4d-chip-text">
+      <span class="v4d-chip-name" data-prog="${c.id}">${c.title}</span>
+      <span class="v4d-chip-bar"><i style="width:35%"></i></span>
+    </span>
+    <span class="v4d-chip-fav${isFav(c.id) ? " is-fav" : ""}" role="button" aria-label="В избранное">${HEART_SVG}</span>
+  </button>`).join("");
+  el.addEventListener("click", (e) => {
+    // Клик по сердечку — добавить/убрать из «Моих каналов» (не переключая канал).
+    const favBtn = e.target.closest(".v4d-chip-fav");
+    if (favBtn) {
+      e.preventDefault(); e.stopPropagation();
+      const chip = favBtn.closest(".v4d-chip");
+      favBtn.classList.toggle("is-fav", toggleFav(chip.dataset.id));
+      if ((tabList()[v1Tab] || {}).tag === "__my") renderV1(); // лайкнутый встаёт первым
+      return;
+    }
+    const chip = e.target.closest(".v4d-chip");
+    if (!chip || !v4bPlayer) return;
+    el.querySelectorAll(".v4d-chip").forEach((c) => c.classList.toggle("is-active", c === chip));
+    v4bPlayer.setChannelById(chip.dataset.id);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+  // Поповер с программой при наведении на канал (макет 13BX).
+  el.addEventListener("mouseover", (e) => {
+    const chip = e.target.closest(".v4d-chip");
+    if (chip) v4dPopShow(chip);
+  });
+  el.addEventListener("mouseout", (e) => {
+    const chip = e.target.closest(".v4d-chip");
+    if (chip && !chip.contains(e.relatedTarget)) v4dPopHideSoon();
+  });
+  // Подтягиваем название текущей передачи и прогресс по времени эфира.
+  list.forEach((c) => nowOnChannel(c.id).then((tc) => {
+    if (!tc) return;
+    const name = el.querySelector(`.v4d-chip-name[data-prog="${c.id}"]`);
+    if (name) name.textContent = tc.title;
+    const start = +tc.start, end = +tc.end;
+    if (start && end && end > start) {
+      const frac = Math.max(0.03, Math.min(1, (Date.now() / 1000 - start) / (end - start)));
+      const bar = name?.parentElement.querySelector(".v4d-chip-bar i");
+      if (bar) bar.style.width = (frac * 100).toFixed(0) + "%";
+    }
+  }).catch(() => {}));
+
+  // Градиенты + стрелки по краям ленты каналов при скролле (как у подборок).
+  const wrap = el.parentElement;
+  if (wrap && wrap.classList.contains("v4d-strip-wrap")) {
+    const mk = (side) => {
+      const d = document.createElement("div");
+      d.className = "v4d-strip-fade " + side;
+      d.innerHTML = `<span class="v4d-strip-arrow${side === "l" ? " is-left" : ""}">${ARROW_SVG}</span>`;
+      return d;
+    };
+    const fadeL = mk("l"), fadeR = mk("r");
+    wrap.append(fadeL, fadeR);
+    fadeR.querySelector(".v4d-strip-arrow").addEventListener("click", () => el.scrollBy({ left: el.clientWidth * 0.8, behavior: "smooth" }));
+    fadeL.querySelector(".v4d-strip-arrow").addEventListener("click", () => el.scrollBy({ left: -el.clientWidth * 0.8, behavior: "smooth" }));
+    const sync = () => {
+      const scrollable = el.scrollWidth > el.clientWidth + 4;
+      fadeR.classList.toggle("is-hidden", !scrollable || el.scrollLeft + el.clientWidth >= el.scrollWidth - 4);
+      fadeL.classList.toggle("is-hidden", el.scrollLeft <= 4);
+    };
+    el.addEventListener("scroll", sync, { passive: true });
+    window.addEventListener("resize", sync);
+    sync(); setTimeout(sync, 300);
+  }
+}
+
+// Общий поповер для ленты каналов (один элемент на странице, переиспользуем).
+let v4dPop = null, v4dPopT = null, v4dVidT = null;
+// Единый предзагруженный видео-элемент для поповера (как в галереях) — грузится один
+// раз, поэтому эфир включается стабильно, а не «через раз».
+const v4dPopVideo = document.createElement("video");
+v4dPopVideo.className = "v4d-pop-vid";
+v4dPopVideo.muted = true; v4dPopVideo.loop = true; v4dPopVideo.playsInline = true; v4dPopVideo.preload = "auto";
+v4dPopVideo.src = "assets/channel-preview.mov";
+function v4dPopShow(chip) {
+  clearTimeout(v4dPopT);
+  // Уже показываем этот канал — ничего не пересобираем (иначе на каждом движении мыши
+  // внутри чипа сбрасывался бы таймер постер→видео, и видео не успевало включиться).
+  if (v4dPop && v4dPop.classList.contains("is-on") && v4dPop.dataset.ch === String(chip.dataset.id)) return;
+  const ch = channels.find((c) => String(c.id) === String(chip.dataset.id));
+  if (!ch) return;
+  if (!v4dPop) {
+    v4dPop = document.createElement("div");
+    v4dPop.className = "v4d-pop";
+    document.body.appendChild(v4dPop);
+    v4dPop.addEventListener("mouseenter", () => clearTimeout(v4dPopT));
+    v4dPop.addEventListener("mouseleave", v4dPopHideSoon);
+  }
+  const r = chip.getBoundingClientRect();
+  v4dPop.style.left = Math.min(r.left, window.innerWidth - 234 - 12) + "px";
+  v4dPop.style.top = (r.bottom + 8) + "px";
+  v4dPop.innerHTML = `<div class="v4d-pop-poster"><img src="${channelThumb(ch)}" alt=""></div><div class="v4d-pop-list"></div>`;
+  const listEl = v4dPop.querySelector(".v4d-pop-list");
+  const reqId = ch.id; v4dPop.dataset.ch = String(reqId);
+  // Сначала ~2 секунды виден постер, затем на его месте проигрывается видео эфира.
+  // Переносим общий предзагруженный видео-элемент в постер — грузить ничего не нужно.
+  clearTimeout(v4dVidT);
+  v4dPopVideo.classList.remove("is-on");
+  v4dVidT = setTimeout(() => {
+    if (v4dPop.dataset.ch !== String(reqId)) return;
+    v4dPop.querySelector(".v4d-pop-poster").appendChild(v4dPopVideo);
+    void v4dPopVideo.offsetWidth; // форсируем кадр — плавное проявление без зависимости от rAF
+    v4dPopVideo.classList.add("is-on");
+    v4dPopVideo.play().catch(() => {});
+  }, 2000);
+  nowOnChannel(ch.id).then((tc) => {
+    if (v4dPop.dataset.ch !== String(reqId)) return; // навели на другой — не перетираем
+    const t = tc && telecastThumb(tc); if (t) v4dPop.querySelector("img").src = t;
+    const rows = [{ time: tc ? mskTime(tc.start) : "", title: tc ? tc.title : ch.title, now: true }];
+    demoSchedule(tc?.end, tc?.restrict ?? 16, 2).forEach((x) => rows.push({ time: x.time, title: x.title }));
+    listEl.innerHTML = rows.map((x) => `<div class="v4d-pop-row${x.now ? " is-now" : ""}"><span class="v4d-pop-time">${x.time}</span><span class="v4d-pop-title">${x.title}</span></div>`).join("");
+  }).catch(() => {});
+  v4dPop.classList.add("is-on");
+}
+// ---- Поповер о передаче при клике на строку программы справа от плеера (Варианты 2/3) ----
+// Такая же карточка, как на экране «Программа передач» (классы .sched-pop / .sp-*).
+const POP_DESC = "Сюжет разворачивается вокруг героев, чьи судьбы неожиданно переплетаются. Драматичные повороты, яркие характеры и финал, который держит до последней минуты.";
+const POP_DUR = "1 ч 20 мин";
+let epgPop = null, epgDim = null;
+function hideEpgPop() { epgPop?.classList.remove("is-open"); epgDim?.classList.remove("is-open"); }
+function showEpgPop(row) {
+  if (!epgPop) {
+    epgDim = document.createElement("div"); epgDim.className = "sched-dim";
+    epgDim.addEventListener("click", hideEpgPop); document.body.appendChild(epgDim);
+    epgPop = document.createElement("div"); epgPop.className = "sched-pop"; document.body.appendChild(epgPop);
+  }
+  const title = row.querySelector(".epg-title")?.textContent || "";
+  const hasIvi = !!row.querySelector(".epg-live");
+  const cover = document.querySelector(".v4b-player .player-bg")?.src || "";
+  const btn = hasIvi
+    ? '<a class="sp-btn" href="https://www.ivi.ru/" target="_blank" rel="noopener">Смотреть на Иви</a>'
+    : '<button class="sp-btn sp-btn-gray" type="button">О программе</button>';
+  epgPop.innerHTML = `<img class="sp-cover" src="${cover}" alt=""><div class="sp-body"><div class="sp-ttl">${title}</div><div class="sp-desc">${POP_DESC}</div><div class="sp-dur">${POP_DUR}</div>${btn}</div>`;
+  epgDim.classList.add("is-open");
+  epgPop.classList.add("is-open");
+  const rr = row.getBoundingClientRect();
+  const W = 320, gap = 12, popH = epgPop.offsetHeight || 360;
+  let left = rr.left - W - gap;            // слева от панели программы
+  if (left < 8) left = rr.right + gap;
+  epgPop.style.left = left + "px";
+  let top = rr.top + rr.height / 2;        // по центру кликнутой строки
+  top = Math.max(8 + popH / 2, Math.min(top, window.innerHeight - 8 - popH / 2));
+  epgPop.style.top = top + "px";
+  epgPop.style.transform = "translateY(-50%)";
+}
+document.addEventListener("click", (e) => {
+  const row = e.target.closest(".pv-epg .epg-row");
+  if (row) showEpgPop(row);
+});
+window.addEventListener("keydown", (e) => { if (e.key === "Escape") hideEpgPop(); });
+
+// Тултип над сердечком лайка (общий элемент, крепится к body — не обрезается постером).
+let likeTip = null;
+function showLikeTip(el) {
+  if (!likeTip) {
+    likeTip = document.createElement("div");
+    likeTip.className = "like-tip";
+    likeTip.innerHTML = '<span class="like-tip-box">Лайк канала</span>';
+    document.body.appendChild(likeTip);
+  }
+  const r = el.getBoundingClientRect();
+  likeTip.style.left = (r.left + r.width / 2) + "px";
+  likeTip.style.top = r.top + "px";
+  likeTip.classList.add("is-on");
+}
+const hideLikeTip = () => likeTip?.classList.remove("is-on");
+document.addEventListener("mouseover", (e) => { const l = e.target.closest(".poster-like"); if (l) showLikeTip(l); });
+document.addEventListener("mouseout", (e) => { const l = e.target.closest(".poster-like"); if (l && !l.contains(e.relatedTarget)) hideLikeTip(); });
+
+function v4dPopHideSoon() {
+  clearTimeout(v4dPopT);
+  clearTimeout(v4dVidT);
+  v4dPopT = setTimeout(() => {
+    if (!v4dPop) return;
+    v4dPop.classList.remove("is-on");
+    v4dPopVideo.classList.remove("is-on");
+    v4dPopVideo.pause();
+  }, 120);
+}
+
 function renderV1() {
   const body = document.getElementById("v1Body");
   if (!body || !isV1like() || !channels.length) return;
   const tab = tabList()[v1Tab] || tabList()[0];
   if (hasPlayer()) {
-    body.innerHTML = `<div class="v4b-player"></div><div id="v4bFeed"></div>`;
+    const strip = isV4d() ? `<div class="v4d-strip-wrap"><div class="v4d-strip"></div></div>` : "";
+    body.innerHTML = `${strip}<div class="v4b-player"></div><div id="v4bFeed"></div>`;
     fillPlayerBlock(body.querySelector(".v4b-player"), tab.tag);
+    if (isV4d()) fillStrip(body.querySelector(".v4d-strip"), tab.tag);
     renderFeedSections(body.querySelector("#v4bFeed"), tab);
+    // Переход «смотреть канал» с других страниц (index.html?ch=ID) — плеер открывается
+    // сразу на этом канале (отдельной страницы плеера в прототипе больше нет). Применяем
+    // один раз и чистим параметр, чтобы при смене вкладок канал не переназначался.
+    const chParam = new URLSearchParams(location.search).get("ch");
+    if (chParam && v4bPlayer) {
+      v4bPlayer.setChannelById(chParam);
+      history.replaceState(null, "", location.pathname);
+    }
     // Возврат с «Программы передач» — плеер вырастает из PiP в полный размер.
     if (sessionStorage.getItem("v4bPipBack")) {
       sessionStorage.removeItem("v4bPipBack");
@@ -414,6 +717,33 @@ document.querySelector(".section-switch")?.addEventListener("click", (e) => {
   else location.href = href;
 });
 
+// Возврат «назад» из bfcache: главная может восстановиться с плеером, застрявшим в
+// PiP (мы уходили в момент анимации) — растим его обратно до полного размера.
+window.addEventListener("pageshow", (e) => {
+  if (!e.persisted) return;
+  const wrap = document.querySelector(".v4b-player.is-pip");
+  if (!wrap) return;
+  const player = wrap.querySelector(".player");
+  wrap.classList.remove("is-pip");
+  wrap.style.minHeight = "";
+  if (player) { player.style.transition = "none"; player.style.transform = ""; }
+  requestAnimationFrame(playerGrowFromPip);
+});
+
+// Кнопка «Телепрограмма» на главной (Варианты 1/2): плеер плавно уезжает в PiP
+// (левый нижний угол), затем открывается программа передач. Флаг v4bPipBack ставим
+// здесь — он снимается при загрузке главной, поэтому возврат ЛЮБЫМ способом (назад в
+// браузере, «ТВ» в шапке, клик по самому PiP) проигрывает обратный рост плеера.
+document.addEventListener("click", (e) => {
+  const a = e.target.closest(".pv-allprog");
+  if (!a || !hasPlayer()) return;
+  e.preventDefault();
+  const href = a.getAttribute("href") || "program.html";
+  try { sessionStorage.setItem("v4bPipBack", "1"); } catch {}
+  if (flipPlayerToPip()) setTimeout(() => { location.href = href; }, 440);
+  else location.href = href;
+});
+
 // Категорийная лента: заголовок + 2 строки плиток каналов (по 5), 16:9.
 // offset «проворачивает» список, чтобы подгалереи одной категории отличались.
 function fillGallery(sec) {
@@ -465,12 +795,25 @@ function v4cCell(ch) {
         <img class="v4c-img" loading="lazy" src="${channelThumb(ch)}" alt="${ch.title}">
         ${ch.is_paid ? '<span class="gal-pay" title="Платный канал">₽</span>' : ""}
         <span class="v4c-mins" hidden></span>
+        <span class="poster-like${isFav(ch.id) ? " is-fav" : ""}" role="button" aria-label="Лайк канала" data-tip="Лайк канала">${HEART_SVG}</span>
       </a>
       <a class="v4c-meta" href="player.html?id=${ch.id}">
         <span class="v4c-logo"><img loading="lazy" src="${channelThumb(ch)}" alt=""></span>
-        <span class="v4c-txt">
-          <span class="v4c-name">${ch.title}</span>
-          <span class="v4c-prog" data-prog="${ch.id}">В эфире</span>
+        <span class="v4c-flip">
+          <span class="v4c-roll">
+            <span class="v4c-face v4c-front">
+              <span class="v4c-name">${ch.title}</span>
+              <span class="v4c-prog" data-prog="${ch.id}">В эфире</span>
+            </span>
+            <span class="v4c-face v4c-back" aria-hidden="true">
+              <span class="v4c-prog v4c-when" data-next-when></span>
+              <span class="v4c-prog" data-next-title></span>
+            </span>
+            <span class="v4c-face v4c-front" aria-hidden="true">
+              <span class="v4c-name">${ch.title}</span>
+              <span class="v4c-prog" data-prog="${ch.id}">В эфире</span>
+            </span>
+          </span>
         </span>
       </a>
     </div>`;
@@ -479,16 +822,25 @@ function v4cCell(ch) {
 function fillV4cCell(cell) {
   if (!cell || cell.dataset.ready || !cell.dataset.id) return;
   cell.dataset.ready = "1";
+  const mins = cell.querySelector(".v4c-mins");
+  // Чипс «сколько осталось» показываем всегда; заглушка 5 мин, если нет данных.
+  const setMins = (min) => { if (mins) { mins.textContent = fmtLeft(min > 0 && min < 600 ? min : 5); mins.hidden = false; } };
+  setMins(0);
   loadNow(+cell.dataset.id).then((tc) => {
     if (!tc) return;
-    const prog = cell.querySelector(".v4c-prog"); if (prog) prog.textContent = tc.title;
+    cell.querySelectorAll("[data-prog]").forEach((el) => { el.textContent = tc.title; });
     // Главный постер — кадр передачи, которая сейчас в эфире (не логотип канала).
     const img = cell.querySelector(".v4c-img");
     const still = telecastThumb(tc);
     if (img && still) img.src = still;
     const min = tc.end ? Math.round((new Date(tc.end) - Date.now()) / 60000) : 0;
-    const mins = cell.querySelector(".v4c-mins");
-    if (mins && min > 0 && min < 600) { mins.textContent = `ещё ${min} ${pluralMin(min)}`; mins.hidden = false; }
+    setMins(min);
+    // Обратная сторона меты — «Далее в HH:MM» + следующая передача (для флипа на ховере).
+    const next = demoSchedule(tc.end, tc.restrict ?? 16, 1)[0];
+    const when = cell.querySelector("[data-next-when]");
+    const ntitle = cell.querySelector("[data-next-title]");
+    if (when && tc.end) when.textContent = `Далее в ${mskTime(tc.end)}`;
+    if (ntitle && next) ntitle.textContent = next.title;
   }).catch(() => {});
 }
 
@@ -568,6 +920,21 @@ const pluralMin = (n) => {
   if (b >= 2 && b <= 4) return "минуты";
   return "минут";
 };
+const pluralHour = (n) => {
+  const a = n % 100, b = n % 10;
+  if (a >= 11 && a <= 14) return "часов";
+  if (b === 1) return "час";
+  if (b >= 2 && b <= 4) return "часа";
+  return "часов";
+};
+// «ещё N минут», а при >1 часа — «ещё 1 час 5 минут».
+const fmtLeft = (min) => {
+  if (min >= 60) {
+    const h = Math.floor(min / 60), m = min % 60;
+    return `ещё ${h} ${pluralHour(h)}${m ? ` ${m} ${pluralMin(m)}` : ""}`;
+  }
+  return `ещё ${min} ${pluralMin(min)}`;
+};
 const nowCache = new Map();
 const loadNow = (id) => {
   if (!nowCache.has(id)) nowCache.set(id, nowOnChannel(id).catch(() => null));
@@ -598,7 +965,7 @@ async function fillTile(cell) {
       `<div class="gal-pop-row${now ? " is-now" : ""}"><span class="gp-t">${t}</span><span class="gp-dot"></span><span class="gp-n">${n}</span></div>`).join("");
     // Угловой чип «осталось N минут» (Вариант 1). В мета-оверлее чип сверху не показываем.
     const min = tc.end ? Math.round((new Date(tc.end) - Date.now()) / 60000) : 0;
-    const leftTxt = (min > 0 && min < 600) ? `ещё ${min} ${pluralMin(min)}` : "";
+    const leftTxt = (min > 0 && min < 600) ? fmtLeft(min) : "";
     if (chip && leftTxt) { chip.textContent = leftTxt; chip.hidden = false; }
     // Мета-оверлей: под названием текущей передачи — таймлайн, справа «ещё 5 минут».
     // Показываем 3 передачи: текущая + 2 следующие.

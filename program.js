@@ -8,6 +8,33 @@ const grid = document.getElementById("channelGrid");
 const gridTitle = document.getElementById("gridTitle");
 const tabsEl = document.getElementById("tabs");
 
+// PiP «ТВ онлайн» — рисуем ПЕРВЫМ делом (до построения сетки каналов), чтобы окошко
+// появлялось сразу, без задержки на прогрузку страницы. Крепим к <body> (а не к .page
+// внутри .app-shell), чтобы оно было прибито к экрану и не уезжало при открытии
+// контролов прототипа сверху.
+(function setupV4bPip() {
+  let mode = "asis", thumb = "", title = "";
+  try {
+    mode = localStorage.getItem("ivi-proto-mode") || "asis";
+    thumb = localStorage.getItem("v4bCurrentThumb") || "";
+    title = localStorage.getItem("v4bCurrentTitle") || "Прямой эфир";
+  } catch {}
+  if (!["v4b", "v4c", "v4d", "v4e", "v4f"].includes(mode) || !thumb) return;
+  const pip = document.createElement("div");
+  pip.className = "v4b-pip";
+  pip.innerHTML = `<img class="v4b-pip-bg" src="${thumb}" alt=""><video class="v4b-pip-vid" muted loop autoplay playsinline preload="auto" src="assets/channel-preview.mov"></video><span class="v4b-pip-grad"></span>
+    <span class="v4b-pip-title">${title}</span>
+    <button class="v4b-pip-expand" aria-label="Скрыть">
+      <svg viewBox="0 0 20 20" width="16" height="16"><path fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" d="M5 5l10 10M15 5l-10 10"/></svg>
+    </button>`;
+  document.body.appendChild(pip);
+  pip.querySelector(".v4b-pip-expand").addEventListener("click", (e) => { e.stopPropagation(); pip.remove(); });
+  pip.addEventListener("click", () => {
+    try { sessionStorage.setItem("v4bPipBack", "1"); } catch {}
+    location.href = "index.html";
+  });
+})();
+
 let channels = [];
 let day = 0; // 0 — сегодня, 1 — завтра
 const getDevice = () => document.documentElement.getAttribute("data-device") || "desktop";
@@ -15,7 +42,7 @@ const getDevice = () => document.documentElement.getAttribute("data-device") || 
 const getMode = () => document.documentElement.getAttribute("data-mode") || "asis";
 const variant = () => document.documentElement.getAttribute("data-variant") || "asis";
 const isV1like = () => ["v1", "v2", "v3"].includes(getMode());
-const isV4c = () => document.documentElement.getAttribute("data-copy") === "v4c";
+const isV4c = () => ["v4c", "v4d", "v4e", "v4f"].includes(document.documentElement.getAttribute("data-copy"));
 const tabList = () => (isV1like() ? TABS : HOME_TABS);
 const defaultTab = () => (isV1like() ? 2 : 0); // «Федеральные»
 let activeTab = defaultTab();
@@ -34,7 +61,7 @@ collection("popular-now-tvshows", { to: 30 })
 // ---- Дата: первый таб-дропдаун «Сегодня» (иконка слева, текст справа) ----
 const CAL_ICON = '<svg viewBox="0 0 20 20" width="18" height="18"><path transform="translate(1 0)" fill="currentColor" d="M17 10C17.553 10 18 10.447 18 11L18 11.207C18 15.005 18 17.097 16.729 18.448C15.47 19.784 13.42 20 9 20C4.58 20 2.531 19.784 1.271 18.448C-0.001 17.097 0 15.005 0 11.207L0 11C0 10.447 0.447 10 1 10C1.553 10 2 10.447 2 11L2 11.207C2 14.386 1.999 16.304 2.728 17.077C3.462 17.857 5.416 18 9 18C12.584 18 14.539 17.857 15.273 17.077C16.001 16.304 16 14.386 16 11.207L16 11C16 10.447 16.447 10 17 10ZM13 0C13.553 0 14 0.447 14 1L14 2.274C16.745 2.768 17.799 4.112 17.958 7.706C17.972 8.044 17.847 8.376 17.615 8.618C17.383 8.861 17.056 9 16.719 9L1.281 9C0.944 9 0.617 8.861 0.385 8.618C0.152 8.376 0.027 8.044 0.042 7.708C0.201 4.112 1.255 2.768 4 2.275L4 1C4 0.447 4.447 0 5 0C5.553 0 6 0.447 6 1L6 2.063C6.881 2.016 7.871 2 9 2C10.129 2 11.119 2.016 12 2.063L12 1C12 0.447 12.447 0 13 0ZM9 4C7.8 4 6.815 4.019 6 4.066L6 5C6 5.553 5.553 6 5 6C4.447 6 4 5.553 4 5L4 4.319C2.434 4.695 2.177 5.471 2.08 7L15.92 7C15.823 5.471 15.566 4.695 14 4.319L14 5C14 5.553 13.553 6 13 6C12.447 6 12 5.553 12 5L12 4.066C11.185 4.019 10.2 4 9 4Z"/></svg>';
 const WD_FULL = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
-let activeDate = 0; // 0 — сегодня; диапазон -2..+7 (2 назад + неделя вперёд)
+let activeDate = 0; // 0 — сегодня; диапазон -1..+7 (из прошедших только «Вчера»)
 let nowMode = false; // фильтр «Сейчас» — только текущая передача + 2 следующие
 const dateLabel = (off) => {
   if (off === 0) return "Сегодня";
@@ -48,8 +75,8 @@ function dateTab() {
   const today = new Date();
   const nowItem = `<button class="td-item${nowMode ? " is-active" : ""}" data-off="now">
       <span class="td-day">Сейчас</span><span class="td-num">эфир</span></button>`;
-  const items = nowItem + Array.from({ length: 10 }, (_, i) => {
-    const off = i - 2; const d = new Date(today); d.setDate(today.getDate() + off);
+  const items = nowItem + Array.from({ length: 9 }, (_, i) => {
+    const off = i - 1; const d = new Date(today); d.setDate(today.getDate() + off);
     return `<button class="td-item${!nowMode && off === activeDate ? " is-active" : ""}" data-off="${off}">
       <span class="td-day">${dateLabel(off)}</span><span class="td-num">${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}</span></button>`;
   }).join("");
@@ -139,6 +166,32 @@ const DEMO = [
   "Время покажет", "Поле чудес", "Вечерние новости", "Док-ток",
   "Большая игра", "На самом деле", "Подкаст.Лаб", "Сегодня вечером",
 ];
+// Правдоподобная сетка дня (по дейпартам) для будущих дней — реальные названия
+// российского ТВ в соответствующее время. Детерминированно варьируем по каналу.
+const DAY_SLOTS = [
+  ["06:00", 6, ["Доброе утро", "Утро России", "Настроение", "Телеканал «Доброе утро»"]],
+  ["09:25", 12, ["Жить здорово!", "О самом главном", "Чудо техники", "По секрету всему свету"]],
+  ["10:30", 12, ["Модный приговор", "Судьба человека", "Доктор Мясников", "Тест на отцовство"]],
+  ["12:00", 16, ["Давай поженимся!", "Андрей Малахов. Прямой эфир", "ДНК", "Понять. Простить"]],
+  ["14:15", 16, ["Время покажет", "60 минут", "Место встречи", "Вести. Дежурная часть"]],
+  ["17:00", 16, ["Мужское / Женское", "Малахов", "Жди меня", "Говорим и показываем"]],
+  ["19:00", 16, ["Пусть говорят", "Поле чудес", "Привет, Андрей!", "Кто хочет стать миллионером?"]],
+  ["21:00", 16, ["Время", "Вести недели", "Сегодня вечером", "Итоги недели"]],
+  ["22:10", 18, ["Премьера сезона. Сериал", "Большое кино: детектив", "Вечерний Ургант", "Голос"]],
+  ["00:20", 18, ["Подкаст.Лаб", "Док-ток", "Большая игра", "Ночные новости"]],
+];
+// Готовая сетка на будущий день для карточки канала. Поворачиваем пулы на индекс
+// канала (idx), чтобы соседние каналы не совпадали и у каждого была своя сетка.
+function futureDayRows(chId, idx, count) {
+  const maxIvi = chId % 2 === 0 ? (chId % 3 === 0 ? 2 : 1) : 0;
+  let iviCnt = 0;
+  return DAY_SLOTS.slice(0, count).map(([t, age, pool], i) => {
+    const r = { t, ttl: `${pool[(idx + i) % pool.length]}, ${age}+` };
+    r.ivi = iviCnt < maxIvi && ((chId * 31 + i * 17) % 10 < 5);
+    if (r.ivi) iviCnt++;
+    return r;
+  });
+}
 function cardDemo(seed, count = 5, startH = 6) {
   const rows = [];
   let mins = startH * 60;
@@ -172,6 +225,32 @@ const pluralMin = (n) => {
   if (b >= 2 && b <= 4) return "минуты";
   return "минут";
 };
+const pluralHour = (n) => {
+  const a = n % 100, b = n % 10;
+  if (a >= 11 && a <= 14) return "часов";
+  if (b === 1) return "час";
+  if (b >= 2 && b <= 4) return "часа";
+  return "часов";
+};
+const fmtLeft = (min) => {
+  if (min >= 60) {
+    const h = Math.floor(min / 60), m = min % 60;
+    return `ещё ${h} ${pluralHour(h)}${m ? ` ${m} ${pluralMin(m)}` : ""}`;
+  }
+  return `ещё ${min} ${pluralMin(min)}`;
+};
+// Избранные каналы (общий ключ со страницей ТВ онлайн) — лайк на постере.
+const FAV_KEY = "ivi-fav-channels";
+const getFavs = () => { try { return JSON.parse(localStorage.getItem(FAV_KEY) || "[]").map(String); } catch { return []; } };
+const isFav = (id) => getFavs().includes(String(id));
+function toggleFav(id) {
+  const favs = getFavs();
+  const i = favs.indexOf(String(id));
+  if (i >= 0) favs.splice(i, 1); else favs.unshift(String(id));
+  try { localStorage.setItem(FAV_KEY, JSON.stringify(favs)); } catch {}
+  return i < 0;
+}
+const HEART_SVG = '<svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>';
 
 // ---- Карточка канала ----
 const skeletonRows = () =>
@@ -185,11 +264,12 @@ function channelCard(ch) {
     ? `<div class="card-chan"><span class="card-chan-logo"><img loading="lazy" src="${channelThumb(ch)}" alt=""></span><span class="card-chan-name">${ch.title}</span></div>`
     : "";
   return `<article class="card${v4c ? " card-v4c" : ""}" data-id="${ch.id}">
-    <a class="card-body" href="player.html?id=${ch.id}">
+    <a class="card-body" href="index.html?ch=${ch.id}">
       <div class="poster">
         <img class="poster-img-el" loading="lazy" src="${channelCover(ch)}" alt="${ch.title}">
         <span class="poster-left" data-left="${ch.id}" hidden></span>
         ${v4c ? `<span class="v4c-pgrad"></span><span class="v4c-pt" data-pt="${ch.id}"></span><span class="v4c-pm" data-pm="${ch.id}" hidden></span>` : ""}
+        <span class="poster-like${isFav(ch.id) ? " is-fav" : ""}" role="button" aria-label="Лайк канала" data-tip="Лайк канала">${HEART_SVG}</span>
         <div class="prog-line" data-prog="${ch.id}" hidden><span class="prog-fill"></span></div>
       </div>
       ${chanRow}
@@ -209,7 +289,10 @@ async function fillCard(ch) {
   if (leftChip) leftChip.hidden = true; // сбрасываем (актуально только для «сейчас»)
 
   if (day === 1) {
-    schedEl.innerHTML = cardDemo(ch.id % 97, 5, 6).map((r) => rowHtml(r[0], r[1])).join("");
+    // Будущий день — правдоподобная сетка по дейпартам (реальные названия + «есть на Иви»).
+    const idx = channels.findIndex((c) => c.id === ch.id);
+    const rows = futureDayRows(ch.id, idx < 0 ? 0 : idx, 8);
+    schedEl.innerHTML = rows.map((r) => rowHtml(r.t, r.ttl, false, r.ivi, false)).join("");
     return;
   }
 
@@ -221,7 +304,7 @@ async function fillCard(ch) {
     const upcoming = demoSchedule(tc.end, restrict, 6).map((r) => [r.time, r.title, false]);
     if (getMode() === "v3") {
       // «Сейчас» всегда середина дня (13:00) — без привязки к реальному времени.
-      const PAST_T = ["11:50", "12:25"];
+      const PAST_T = ["12:25"];
       const UP_T = ["13:40", "14:25", "15:10", "16:05", "17:20", "18:40"];
       const nm = (k) => `${DEMO[(ch.id * 7 + k * 13) % DEMO.length]}, ${restrict}+`;
       // Фильтр «Сейчас» — только текущая передача + 2 следующие (без прошедших).
@@ -256,7 +339,7 @@ async function fillCard(ch) {
       if (pt) pt.textContent = tc.title;
       const pm = grid.querySelector(`.v4c-pm[data-pm="${ch.id}"]`);
       const min = tc.end ? Math.round((new Date(tc.end) - Date.now()) / 60000) : 0;
-      if (pm && min > 0 && min < 600) { pm.textContent = `ещё ${min} мин`; pm.hidden = false; }
+      if (pm && min > 0 && min < 600) { pm.textContent = fmtLeft(min); pm.hidden = false; }
     }
     // Вариант 3 — таймлайн под постером: середина эфира (без привязки к реальному времени).
     const line = grid.querySelector(`.prog-line[data-prog="${ch.id}"]`);
@@ -347,20 +430,51 @@ function showPop(row) {
   // По высоте — по центру экрана, по горизонтали — рядом с родительской карточкой
   // (справа, при нехватке места — слева).
   const cr = (card || row).getBoundingClientRect();
+  const rowR = row.getBoundingClientRect();
   const W = 320, gap = 12;
   let left = cr.right + gap;
   if (left + W > window.innerWidth - 8) left = cr.left - W - gap;
   left = Math.max(8, left);
   p.style.left = left + "px";
-  p.style.top = "50%";
   p.style.transform = "translateY(-50%)";
   p.classList.add("is-open");
+  // По вертикали — по центру относительно СТРОКИ, по которой кликнули (а не всей карточки),
+  // с подгоном, чтобы поповер не выходил за края экрана.
+  const popH = p.offsetHeight || 360;
+  let top = rowR.top + rowR.height / 2;
+  top = Math.max(8 + popH / 2, Math.min(top, window.innerHeight - 8 - popH / 2));
+  p.style.top = top + "px";
   // Перезапускаем анимацию появления на каждый показ (в т.ч. при смене передачи).
   p.style.animation = "none";
   void p.offsetWidth;
   p.style.animation = "";
 }
 const realRow = (r) => r && !["…", "—", ""].includes(r.querySelector(".sched-title")?.textContent.trim());
+// Клик по сердечку на постере — добавить/убрать канал из избранного (не открывая канал).
+grid.addEventListener("click", (e) => {
+  const like = e.target.closest(".poster-like");
+  if (!like) return;
+  e.preventDefault(); e.stopPropagation();
+  const card = like.closest("[data-id]");
+  if (card) like.classList.toggle("is-fav", toggleFav(card.dataset.id));
+}, true);
+// Тултип над сердечком лайка.
+let likeTip = null;
+function showLikeTip(el) {
+  if (!likeTip) {
+    likeTip = document.createElement("div");
+    likeTip.className = "like-tip";
+    likeTip.innerHTML = '<span class="like-tip-box">Лайк канала</span>';
+    document.body.appendChild(likeTip);
+  }
+  const r = el.getBoundingClientRect();
+  likeTip.style.left = (r.left + r.width / 2) + "px";
+  likeTip.style.top = r.top + "px";
+  likeTip.classList.add("is-on");
+}
+const hideLikeTip = () => likeTip?.classList.remove("is-on");
+grid.addEventListener("mouseover", (e) => { const l = e.target.closest(".poster-like"); if (l) showLikeTip(l); });
+grid.addEventListener("mouseout", (e) => { const l = e.target.closest(".poster-like"); if (l && !l.contains(e.relatedTarget)) hideLikeTip(); });
 // Поповер о передаче открывается по КЛИКУ (а не по наведению).
 grid.addEventListener("click", (e) => {
   if (getMode() !== "v3") return;
@@ -467,33 +581,6 @@ toggle.addEventListener("click", () => {
 });
 
 // ---- Вариант 2: плавающий PiP-плеер поверх страницы телепрограммы ----
-// Плеер не исчезает при переходе с ТВ онлайн — висит в левом нижнем углу,
-// по клику разворачивается обратно на ТВ онлайн (с анимацией роста).
-(function setupV4bPip() {
-  let mode = "asis", thumb = "", title = "";
-  try {
-    mode = localStorage.getItem("ivi-proto-mode") || "asis";
-    thumb = localStorage.getItem("v4bCurrentThumb") || "";
-    title = localStorage.getItem("v4bCurrentTitle") || "Прямой эфир";
-  } catch {}
-  if ((mode !== "v4b" && mode !== "v4c") || !thumb) return;
-  // Рисуем сразу тем же кадром, что был в плеере, — бесшовная передача без мигания.
-  const pip = document.createElement("div");
-  pip.className = "v4b-pip";
-  pip.innerHTML = `<img class="v4b-pip-bg" src="${thumb}" alt=""><video class="v4b-pip-vid" muted loop autoplay playsinline preload="auto" src="assets/channel-preview.mov"></video><span class="v4b-pip-grad"></span>
-    <span class="v4b-pip-title">${title}</span>
-    <button class="v4b-pip-expand" aria-label="Скрыть">
-      <svg viewBox="0 0 20 20" width="16" height="16"><path fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" d="M5 5l10 10M15 5l-10 10"/></svg>
-    </button>`;
-  (document.querySelector(".page") || document.body).appendChild(pip);
-  // Клик по крестику — скрыть окошко; по самому плееру — вернуться на ТВ онлайн.
-  pip.querySelector(".v4b-pip-expand").addEventListener("click", (e) => { e.stopPropagation(); pip.remove(); });
-  pip.addEventListener("click", () => {
-    try { sessionStorage.setItem("v4bPipBack", "1"); } catch {}
-    location.href = "index.html";
-  });
-})();
-
 // ---- Видео-превью эфира при наведении на постер канала (единый элемент) ----
 const pgVideo = document.createElement("video");
 pgVideo.className = "pg-hover-video";
@@ -513,3 +600,42 @@ grid.addEventListener("mouseout", (e) => {
   pgVideo.classList.remove("is-on");
   pgVideo.pause();
 });
+
+// ---- Вариант 2 (v4e): «Вся телепрограмма» открывает канал не отдельной страницей,
+// а шторкой, выезжающей справа (iframe со schedule.html). ----
+const isV4e = () => ["v4e", "v4f"].includes(document.documentElement.getAttribute("data-copy"));
+let schDrawer, schDim, schFrame;
+function openSchDrawer(id) {
+  if (!schDrawer) {
+    schDim = document.createElement("div");
+    schDim.className = "sched-drawer-dim";
+    schDim.addEventListener("click", closeSchDrawer);
+    schDrawer = document.createElement("div");
+    schDrawer.className = "sched-drawer";
+    schDrawer.innerHTML = `<button class="sched-drawer-close" aria-label="Закрыть"><svg viewBox="0 0 20 20" width="20" height="20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M4 4l12 12M16 4L4 16"/></svg></button><iframe class="sched-drawer-frame" title="Телепрограмма канала"></iframe>`;
+    schFrame = schDrawer.querySelector(".sched-drawer-frame");
+    schDrawer.querySelector(".sched-drawer-close").addEventListener("click", closeSchDrawer);
+    document.body.append(schDim, schDrawer);
+  }
+  schFrame.src = `schedule.html?id=${id}&embed=1`;
+  // Форсируем начальный кадр (шторка за правым краем), затем открываем — слайд-ин.
+  schDrawer.classList.remove("is-open"); schDim.classList.remove("is-open");
+  void schDrawer.offsetWidth;
+  schDim.classList.add("is-open");
+  schDrawer.classList.add("is-open");
+  document.documentElement.style.overflow = "hidden";
+}
+function closeSchDrawer() {
+  if (!schDrawer) return;
+  schDrawer.classList.remove("is-open");
+  schDim.classList.remove("is-open");
+  document.documentElement.style.overflow = "";
+}
+document.addEventListener("click", (e) => {
+  const a = e.target.closest(".allprog");
+  if (!a || !isV4e()) return;
+  e.preventDefault();
+  const id = new URLSearchParams((a.getAttribute("href").split("?")[1]) || "").get("id");
+  if (id) openSchDrawer(id);
+});
+window.addEventListener("keydown", (e) => { if (e.key === "Escape") closeSchDrawer(); });
