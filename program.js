@@ -57,9 +57,11 @@ const isV4f = () => copy() === "v4f";
 const isV4any = () => ["v4d", "v4e", "v4f"].includes(copy());
 // В Вариантах после «Все каналы» добавляем «Мои каналы» (как в каталоге).
 const MY_TAB = { label: "Мои каналы", tag: "__my", heading: "Мои каналы" };
-const tabList = () => (isV4any() ? [TABS[0], MY_TAB, ...TABS.slice(1)] : isV1like() ? TABS : HOME_TABS);
+// Вариант 3 (эмодзи-табы) — без «Мои каналы», как на ТВ онлайн.
+const emojiTabs = () => document.documentElement.hasAttribute("data-emojitabs");
+const tabList = () => (emojiTabs() ? TABS : isV4any() ? [TABS[0], MY_TAB, ...TABS.slice(1)] : isV1like() ? TABS : HOME_TABS);
 // «Федеральные»: в Вариантах сместилась на индекс 3 (Все, Мои, Развлек., Федеральные).
-const defaultTab = () => (isV4any() ? 3 : isV1like() ? 2 : 0);
+const defaultTab = () => (emojiTabs() ? 2 : isV4any() ? 3 : isV1like() ? 2 : 0);
 let activeTab = defaultTab();
 const nowCache = new Map();
 const loadNow = (id) => {
@@ -119,7 +121,7 @@ const V4_ICONS = [
 ];
 const v4Icon = (i) => `<span class="tab-emoji"><img src="${PA}${V4_ICONS[i % V4_ICONS.length]}" alt="" loading="lazy"></span>`;
 function renderTabs() {
-  const v4 = variant() === "v4";
+  const v4 = variant() === "v4" || document.documentElement.hasAttribute("data-emojitabs"); // Вариант 3 — тоже эмодзи-табы
   const v3 = getMode() === "v3" && variant() !== "v2" && !v4;
   tabsEl.innerHTML = dateTab() + tabList()
     .map((t, i) => v4
@@ -667,7 +669,8 @@ function closeSchDrawer() {
 }
 // Вариант 1 (v4e): клик по «Вся телепрограмма» открывает канал шторкой справа.
 grid.addEventListener("click", (e) => {
-  if (!isV4eOnly()) return;
+  // Вариант 3 (тот же экран) — канал открывается отдельной страницей, не шторкой.
+  if (!isV4eOnly() || localStorage.getItem("ivi-proto-mode") === "v3") return;
   const a = e.target.closest(".allprog");
   if (!a) return;
   e.preventDefault();
@@ -730,27 +733,6 @@ function setupV4f() {
     wrap.querySelector(".v4f-rail").style.top = ((bar ? Math.round(bar.getBoundingClientRect().height) : 62) + 8) + "px";
   };
   setRailTop(); window.addEventListener("resize", setRailTop);
-  // Лента каналов (2-й уровень) прячется при скролле вниз и сразу появляется, как только
-  // идём вверх (к верхним табам) — порог минимальный, чтобы реагировало мгновенно.
-  let lastY = window.scrollY, railDown = false;
-  window.addEventListener("scroll", () => {
-    const y = window.scrollY, de = document.documentElement;
-    if (y < 120) { de.classList.remove("v4f-railhidden"); railDown = false; lastY = y; return; }
-    if (y > lastY + 6 && !railDown) { de.classList.add("v4f-railhidden"); railDown = true; }
-    else if (y < lastY - 2 && railDown) { de.classList.remove("v4f-railhidden"); railDown = false; }
-    lastY = y;
-  }, { passive: true });
-  // Наведение на верхние табы (или саму ленту) в залипшем состоянии показывает ленту
-  // каналов; уводим курсор — она снова прячется.
-  const tabsBar = document.querySelector(".tabs-bar");
-  const railEl = wrap.querySelector(".v4f-rail");
-  let peekT;
-  const showPeek = () => { clearTimeout(peekT); if (document.documentElement.classList.contains("v4f-railhidden")) document.documentElement.classList.add("v4f-peek"); };
-  const hidePeek = () => { clearTimeout(peekT); peekT = setTimeout(() => document.documentElement.classList.remove("v4f-peek"), 140); };
-  tabsBar?.addEventListener("mouseenter", showPeek);
-  tabsBar?.addEventListener("mouseleave", hidePeek);
-  railEl.addEventListener("mouseenter", showPeek);
-  railEl.addEventListener("mouseleave", hidePeek);
 }
 function renderV4f(tab) {
   setupV4f();

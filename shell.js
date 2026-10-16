@@ -10,7 +10,6 @@ const MODES = [
   { id: "asis", label: "As is", sub: "Как сейчас работает сервис", hidden: true },
   { id: "v1", label: "Вариант 1", sub: "Гипотеза A", disabled: true, hidden: true },
   { id: "v2", label: "Вариант 2", sub: "Гипотеза B", hidden: true },
-  { id: "v3", label: "Вариант 3", sub: "Гипотеза C", hidden: true },
   // Прежние гипотезы (v4 «Вариант 1», v4b/v4c) пока скрыты из интерфейса — код оставляем.
   { id: "v4", label: "Вариант 1", sub: "Гипотеза D", hidden: true },
   { id: "v4b", label: "Вариант 2 (архив)", sub: "Плеер + список каналов", hidden: true },
@@ -20,9 +19,13 @@ const MODES = [
   // В интерфейсе — только «Вариант 1» (v4e, шторка справа) и «Вариант 2» (v4f, канал сразу).
   { id: "v4e", label: "Вариант 1", sub: "Телепрограмма канала — шторкой справа" },
   { id: "v4f", label: "Вариант 2", sub: "Сразу программа канала + фильтры" },
+  // v3 — первый экран «ТВ онлайн» (без плеера), с галереями как у Вариантов 1/2.
+  { id: "v3", label: "Вариант 3", sub: "ТВ онлайн без плеера — галереи «Сейчас в эфире»" },
 ];
 // v4b/v4c/v4d/v4e визуально на базе v4: отдаём им data-variant="v4", различаем через data-copy.
 const variantAttr = (id) => (["v4b", "v4c", "v4d", "v4e", "v4f"].includes(id) ? "v4" : id);
+// Вариант 3: «Программа передач» — та же, что в Варианте 1 (v4e), но канал открывается отдельной страницей.
+const pageCopy = (id) => (id === "v3" && location.pathname.endsWith("program.html") ? "v4e" : id);
 
 // В интерфейсе показываем только видимые варианты (прежние В1–В3 и As is скрыты).
 const navModes = () => MODES.filter((m) => !m.hidden);
@@ -50,8 +53,9 @@ function setMode(id) {
   // Варианты 1/2/3 используют единый макет Варианта 3 (data-mode="v3");
   // реальный выбор держим в data-variant — через него v2 получает свои отличия.
   document.documentElement.setAttribute("data-mode", id === "asis" ? "asis" : "v3");
-  document.documentElement.setAttribute("data-variant", variantAttr(id));
-  document.documentElement.setAttribute("data-copy", id);
+  document.documentElement.setAttribute("data-variant", variantAttr(pageCopy(id)));
+  document.documentElement.setAttribute("data-copy", pageCopy(id));
+  document.documentElement.toggleAttribute("data-emojitabs", id === "v3"); // Вариант 3 — эмодзи-табы
   document.querySelectorAll(".mode-tab").forEach((t) =>
     t.classList.toggle("is-active", t.dataset.mode === id)
   );
@@ -87,8 +91,11 @@ function build() {
   const page = document.querySelector(".page");
   if (!page) return;
   document.documentElement.setAttribute("data-mode", getMode() === "asis" ? "asis" : "v3");
-  document.documentElement.setAttribute("data-variant", variantAttr(getMode()));
-  document.documentElement.setAttribute("data-copy", getMode());
+  document.documentElement.setAttribute("data-variant", variantAttr(pageCopy(getMode())));
+  document.documentElement.setAttribute("data-copy", pageCopy(getMode()));
+  // Вариант 3 на «Программе передач» — помечаем, чтобы вернуть табы «ТВ онлайн / Программа передач».
+  document.documentElement.toggleAttribute("data-v3prog", pageCopy(getMode()) !== getMode());
+  document.documentElement.toggleAttribute("data-emojitabs", getMode() === "v3"); // Вариант 3 — эмодзи-табы
   document.documentElement.setAttribute("data-device", getDevice());
   // Переключение навигации убрано из прототипа — всегда старая навигация.
   document.documentElement.setAttribute("data-nav", "old");

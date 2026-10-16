@@ -1,7 +1,6 @@
 import {
   tvChannels, channelTelecasts, nowOnChannel, mskTime,
   channelThumb, telecastThumb, demoSchedule, collection, contentThumb, showEpisodes, showPoster,
-  isSportChannel,
 } from "./ivi-api.js";
 
 // Днём — шоу «Мама в 16», вечером — сериал «Холод» (реальные компиляции Иви).
@@ -169,7 +168,7 @@ function renderList() {
       : "";
     // Под Иви-контентом — лента серий: днём «Все выпуски шоу», вечером «Все серии сериала».
     // В шторке/фрейме (embed) промо конкретных серий убираем — остаётся только кнопка «Смотреть на Иви».
-    const embed = document.documentElement.classList.contains("is-embed");
+    const embed = document.documentElement.matches(".is-embed, .is-v4list");
     const block = (blue && !embed)
       ? (r.kind === "series"
           ? renderSeries(seriesEps, "Все серии сериала на Иви", true)
@@ -177,11 +176,7 @@ function renderList() {
       : "";
     // По макету ZGQ у текущего эфира кнопка «В эфир» стоит ПОД описанием (в колонке
     // инфо, слева); у остальных Иви-передач кнопка «Смотреть на Иви» — справа.
-    // Спортивный канал — вместо «Смотреть на Иви» платная «Купить трансляцию» (салатовая).
-    const sport = isSportChannel(channel);
-    const showBtn = blue || (sport && r.now);
-    const label = sport ? "Купить трансляцию" : (r.now ? "В эфир" : "Смотреть на Иви");
-    const watchBtn = showBtn ? `<a class="fe-watch${sport ? " fe-watch-buy" : ""}" href="https://www.ivi.ru/" target="_blank" rel="noopener">${label}</a>` : "";
+    const watchBtn = blue ? `<a class="fe-watch" href="https://www.ivi.ru/" target="_blank" rel="noopener">${r.now ? "В эфир" : "Смотреть на Иви"}</a>` : "";
     return `<div class="fe-card${r.now ? " is-now" : ""}${blue ? " is-ivi" : ""}${r.past ? " is-past" : ""}">
       <div class="fe-timecol">
         <span class="fe-time">${r.time}</span>
@@ -332,6 +327,8 @@ if (new URLSearchParams(location.search).get("embed")) {
   if (V4F) document.documentElement.classList.add("is-v4f"); // прячем табы дней (дата в фильтрах сверху)
   $("schClose").style.display = "none";
 } else {
+  // Вариант 3: сам список передач свёрстан как в Варианте 2 (табы дней — прежние).
+  try { if (localStorage.getItem("ivi-proto-mode") === "v3") document.documentElement.classList.add("is-v4list"); } catch {}
   $("schClose").addEventListener("click", () => {
     if (history.length > 1) history.back();
     else location.href = "index.html";

@@ -20,6 +20,8 @@ const isV4c = () => ["v4c", "v4d", "v4e", "v4f"].includes(document.documentEleme
 const isV4d = () => ["v4d", "v4e", "v4f"].includes(document.documentElement.getAttribute("data-copy"));
 // Встроенный плеер на ТВ онлайн — в Вариантах 2 и 3 (v4c включает v4d).
 const hasPlayer = () => isV4b() || isV4c();
+// Вариант 3 (v3, без плеера) — галереи и ховеры те же, что под плеером в Вариантах 1/2.
+const isV4cGal = () => isV4c() || document.documentElement.getAttribute("data-copy") === "v3";
 // Вариант 3 — после «Все каналы» добавляем «Мои каналы» (псевдо-тег __my = подборка).
 const MY_TAB = { label: "Мои каналы", tag: "__my", heading: "Мои каналы" };
 const V4D_TABS = [TABS[0], MY_TAB, ...TABS.slice(1)];
@@ -50,7 +52,7 @@ const V4_ICONS = [
 ];
 const v4Icon = (i) => `<span class="tab-emoji"><img src="${PA}${V4_ICONS[i % V4_ICONS.length]}" alt="" loading="lazy"></span>`;
 function renderTabs() {
-  const v4 = variant() === "v4";
+  const v4 = variant() === "v4" || document.documentElement.hasAttribute("data-emojitabs"); // Вариант 3 — тоже эмодзи-табы
   const v3 = getMode() === "v3" && variant() !== "v2" && !v4; // v2 и v4 — свои табы
   tabsEl.innerHTML = tabList()
     .map((t, i) => v4
@@ -379,7 +381,7 @@ document.getElementById("v1Body")?.addEventListener("click", (e) => {
   if (cell) like.classList.toggle("is-fav", toggleFav(cell.dataset.id));
 }, true);
 document.getElementById("v1Body")?.addEventListener("mouseover", (e) => {
-  if (!isV4c()) return;
+  if (!isV4cGal()) return;
   const cell = e.target.closest(".v4c-cell");
   if (!cell || cell === v4cHoverCell) return;
   if (v4cHoverCell) v4cLeave(v4cHoverCell);
@@ -785,7 +787,7 @@ function fillGallery(sec) {
     list = base.concat(pool.slice(k).concat(pool.slice(0, k))).slice(0, isV2 ? 16 : MIN);
   }
   // Вариант 3 — одноряд «Сейчас в эфире»: мета снизу всегда, hover → кадр эфира.
-  if (isV4c()) {
+  if (isV4cGal()) {
     sec.classList.add("v4c-gal");
     sec.innerHTML = `
       <h2 class="gal-head">${heading} <span class="chev">›</span></h2>
@@ -915,11 +917,11 @@ function fillFavs(el) {
   const pool = channels.slice(12);
   const list = (pool.length >= FAV_LIMIT ? pool : channels).slice(0, FAV_LIMIT);
   if (!list.length) { el.remove(); return; }
-  const v4c = isV4c();
+  const v4c = isV4cGal();
   el.classList.add("gal", "fav-gal");
   if (v4c) el.classList.add("v4c-gal");
   el.innerHTML = `
-    <h2 class="gal-head">${v4c ? "Сейчас в эфире" : "Любимые каналы"} <span class="chev">›</span></h2>
+    <h2 class="gal-head">${isV4c() ? "Сейчас в эфире" : "Любимые каналы"} <span class="chev">›</span></h2>
     <div class="gal-grid">${list.map(v4c ? v4cCell : galCell).join("")}</div>
     <div class="gal-less" aria-hidden="true"><span class="gal-more-arrow gal-arrow-left">${ARROW_SVG}</span></div>
     <div class="gal-more" aria-hidden="true"><span class="gal-more-arrow">${ARROW_SVG}</span></div>`;

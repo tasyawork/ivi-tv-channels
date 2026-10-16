@@ -655,8 +655,8 @@ html[data-mode="v3"] .tab-date:focus-within .tab-date-btn {
 }
 
 /* Вариант 4 — «живые» эмодзи-табы (макет WBH): стеклянная пилюля + текст + 3D-эмодзи */
-html[data-variant="v4"] .tabs { gap: 8px; align-items: center; border-bottom: none; }
-html[data-variant="v4"] .tab {
+html:is([data-variant="v4"],[data-emojitabs]) .tabs { gap: 8px; align-items: center; border-bottom: none; }
+html:is([data-variant="v4"],[data-emojitabs]) .tab {
   display: inline-flex; align-items: center; gap: 7px;
   height: 38px; padding: 0 10px 0 14px; border-radius: 999px;
   font-size: 14px; line-height: 18px; font-weight: 500; letter-spacing: -0.01em;
@@ -665,17 +665,17 @@ html[data-variant="v4"] .tab {
   backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px);
   overflow: visible;
 }
-html[data-variant="v4"] .tab:hover {
+html:is([data-variant="v4"],[data-emojitabs]) .tab:hover {
   background: linear-gradient(167deg, #ffffff52 -32%, #ffffff2b 20%, #ffffff2b 80%, #ffffff52 132%);
 }
-html[data-variant="v4"] .tab.is-active {
+html:is([data-variant="v4"],[data-emojitabs]) .tab.is-active {
   background: linear-gradient(167deg, #ffffff66 -32%, #ffffff3d 20%, #ffffff3d 80%, #ffffff66 132%);
 }
-html[data-variant="v4"] .tab.is-active::after { display: none; } /* без подчёркивания — вид пилюли */
-html[data-variant="v4"] .tab-emoji { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; flex-shrink: 0; }
-html[data-variant="v4"] .tab-emoji img { width: 22px; height: 22px; object-fit: contain; display: block; }
+html:is([data-variant="v4"],[data-emojitabs]) .tab.is-active::after { display: none; } /* без подчёркивания — вид пилюли */
+html:is([data-variant="v4"],[data-emojitabs]) .tab-emoji { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; flex-shrink: 0; }
+html:is([data-variant="v4"],[data-emojitabs]) .tab-emoji img { width: 22px; height: 22px; object-fit: contain; display: block; }
 /* Таб выбора дня — в том же стиле стеклянной пилюли, по высоте как табы категорий */
-html[data-variant="v4"] .tab-date-btn {
+html:is([data-variant="v4"],[data-emojitabs]) .tab-date-btn {
   height: 38px; padding: 0 16px; font-size: 14px; border-radius: 999px;
   background: linear-gradient(167deg, #ffffff38 -32%, #ffffff1a 20%, #ffffff1a 80%, #ffffff38 132%);
   backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px);
@@ -957,24 +957,20 @@ html:not([data-copy="v4f"]) .v4f-strip-wrap { display: none; }
 /* Лента каналов залипает под категориями при скролле (top выставляет JS по высоте табов).
    2-й уровень табов показываем только при скролле вверх — вниз он прячется за категориями. */
 .v4f-rail { position: sticky; top: 86px; z-index: 55; background: var(--bg); transition: transform .26s ease, opacity .26s ease; }
-html.v4f-railhidden .v4f-rail { transform: translateY(-100%); opacity: 0; pointer-events: none; }
 /* Единый общий фон липких табов — без градиентного затемнения между уровнями.
    Залипают вплотную к верху (top:0) и с минимальным отступом над пилюлями. */
 html[data-copy="v4f"] .tabs-bar { background: var(--bg); top: 8px; padding-top: 6px; margin-top: 20px; }
 /* Плавный градиент-растворение под липкими табами (и под лентой каналов) — чтобы
    контент уходил под них мягко, а не обрезался резкой линией. */
-html[data-copy="v4f"] .tabs-bar::after,
 html[data-copy="v4f"] .v4f-rail::after {
   content: ""; position: absolute; left: 50%; top: 100%; width: 100vw; transform: translateX(-50%);
   height: 28px; background: linear-gradient(180deg, var(--bg), transparent); pointer-events: none; z-index: -1;
   opacity: 0; transition: opacity .2s ease;
 }
 /* Подножка-градиент — только когда табы залипли при скролле вниз (не в исходном положении). */
-html[data-copy="v4f"] .tabs-bar.is-stuck::after,
 html[data-copy="v4f"]:has(.tabs-bar.is-stuck) .v4f-rail::after { opacity: 1; }
 /* Наведение на верхние табы (категории) в залипшем состоянии показывает ленту каналов;
    уводим курсор — она снова прячется. */
-html.v4f-railhidden.v4f-peek .v4f-rail { transform: none; opacity: 1; pointer-events: auto; }
 /* Сплошной фон за табами и в 8px-зазоре над ними — чтобы сверху не проглядывал контент. */
 html[data-copy="v4f"] .tabs-bar::before {
   content: ""; position: absolute; left: 50%; top: -8px; bottom: 0; width: 100vw; transform: translateX(-50%);
@@ -1015,7 +1011,7 @@ html.is-v4f .sched-page { padding-top: 8px; }
 /* Отступ до ленты каналов = отступу от ленты до плеера (16px у ленты снизу). */
 html:is([data-copy="v4d"],[data-copy="v4e"],[data-copy="v4f"]) #v1Body > .v4d-strip-wrap { margin-top: 0; }
 /* Табы категорий — без зазора между собой (0 вместо 8px). */
-html:is([data-copy="v4d"],[data-copy="v4e"],[data-copy="v4f"]) .tabs { gap: 2px; }
+html:is([data-copy="v4d"],[data-copy="v4e"],[data-copy="v4f"]):not([data-emojitabs]) .tabs { gap: 2px; }
 /* «Покупки» — купленные спортивные трансляции (дата крупно + название). */
 .buys-row { display: grid; grid-auto-flow: column; grid-auto-columns: min(300px, calc((100% - 4 * 8px) / 5)); gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; }
 .buys-row::-webkit-scrollbar { display: none; }
@@ -1026,7 +1022,7 @@ html:is([data-copy="v4d"],[data-copy="v4e"],[data-copy="v4f"]) .tabs { gap: 2px;
 .buy-date { margin-top: 10px; font-size: 19px; line-height: 23px; font-weight: 700; color: #fff; }
 .buy-title { margin-top: 3px; font-size: 13px; line-height: 17px; color: rgba(255, 255, 255, 0.6); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 /* Заголовки подборок — меньше шрифт и меньше отступ до постеров. */
-html:is([data-copy="v4c"],[data-copy="v4d"],[data-copy="v4e"],[data-copy="v4f"]) .gal-head { font-size: 20px; line-height: 24px; margin-bottom: 10px; }
+html:is([data-copy="v3"],[data-copy="v4c"],[data-copy="v4d"],[data-copy="v4e"],[data-copy="v4f"]) .gal-head { font-size: 20px; line-height: 24px; margin-bottom: 10px; }
 .v4d-strip { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 0 0 16px; }
 .v4d-strip::-webkit-scrollbar { display: none; }
 .v4d-chip {
@@ -1083,6 +1079,7 @@ html:is([data-copy="v4c"],[data-copy="v4d"],[data-copy="v4e"],[data-copy="v4f"])
 /* Вариант 3 (макет 12AX) — 1:1 с макетом: без «ТВ онлайн/Программа передач»,
    без тоггла «Каналы/Программа канала» в плеере, фильтры — стеклянные пилюли. */
 html:is([data-copy="v4d"],[data-copy="v4e"],[data-copy="v4f"]) .intro { display: none; }
+html[data-v3prog] .intro { display: block; } /* Вариант 3: табы «ТВ онлайн / Программа передач» остаются */
 html:is([data-copy="v4d"],[data-copy="v4e"],[data-copy="v4f"]) .pv-switch { display: none; }
 /* Без нижней кнопки — программе не нужен большой отступ снизу под тоггл. */
 html:is([data-copy="v4d"],[data-copy="v4e"],[data-copy="v4f"]) .pv-epg { padding-bottom: 12px; }
@@ -1097,16 +1094,16 @@ html:is([data-copy="v4d"],[data-copy="v4e"],[data-copy="v4f"]) .pv-allprog {
 }
 html:is([data-copy="v4d"],[data-copy="v4e"],[data-copy="v4f"]) .pv-allprog:hover { background: rgba(255, 255, 255, 0.2); }
 /* Фильтры категорий — текст в стеклянной пилюле, активная залита (как на макете). */
-html:is([data-copy="v4d"],[data-copy="v4e"],[data-copy="v4f"]) .tab-emoji { display: none; }
+html:is([data-copy="v4d"],[data-copy="v4e"],[data-copy="v4f"]):not([data-emojitabs]) .tab-emoji { display: none; }
 /* Текст — medium; у всех одинаковые (увеличенные) боковые отступы, чтобы активная
    пилюля не меняла размер на клике. Белый 100% — только у активной, у остальных — с прозрачностью. */
-html:is([data-copy="v4d"],[data-copy="v4e"],[data-copy="v4f"]) .tab {
+html:is([data-copy="v4d"],[data-copy="v4e"],[data-copy="v4f"]):not([data-emojitabs]) .tab {
   gap: 0; height: 36px; padding: 0 20px; font-size: 15px; line-height: 20px; font-weight: 500; letter-spacing: -0.01em;
   color: rgba(255, 255, 255, 0.72);
   background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none;
 }
-html:is([data-copy="v4d"],[data-copy="v4e"],[data-copy="v4f"]) .tab:hover { color: #fff; background: rgba(255, 255, 255, 0.08); }
-html:is([data-copy="v4d"],[data-copy="v4e"],[data-copy="v4f"]) .tab.is-active {
+html:is([data-copy="v4d"],[data-copy="v4e"],[data-copy="v4f"]):not([data-emojitabs]) .tab:hover { color: #fff; background: rgba(255, 255, 255, 0.08); }
+html:is([data-copy="v4d"],[data-copy="v4e"],[data-copy="v4f"]):not([data-emojitabs]) .tab.is-active {
   color: #fff;
   background: linear-gradient(176deg, #ffffff26 -18%, #ffffff1a 9%, #ffffff1a 91%, #ffffff26 118%);
   backdrop-filter: blur(3.5px); -webkit-backdrop-filter: blur(3.5px);
@@ -1220,7 +1217,8 @@ html[data-copy="v4b"] #v4bFeed > .gal:first-child { margin-top: 30px; }
 .sport-pw-sub { margin: 0 0 20px; color: rgba(255,255,255,.72); font-size: clamp(13px, 1.1vw, 16px); line-height: 1.4; max-width: 34em; }
 .sport-pw-btns { display: flex; gap: 12px; flex-wrap: wrap; }
 .sport-pw-btn { display: inline-flex; align-items: center; height: 48px; padding: 0 22px; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; }
-.sport-pw-btn.is-primary { background: #fa3e5d; color: #fff; }
+.sport-pw-btn.is-primary { background: var(--accent); color: #fff; } /* как .btn-cta в шапке */
+.sport-pw-btn.is-primary:hover { filter: brightness(1.08); }
 .sport-pw-btn.is-ghost { background: rgba(255,255,255,.14); color: #fff; backdrop-filter: blur(6px); }
 .player::before {
   content: "";
@@ -1778,9 +1776,6 @@ html[data-shell-open] .app-shell {
   background: #F30745; color: #fff; font-size: 14px; font-weight: 600; white-space: nowrap;
 }
 .fe-watch:hover { background: #ff1f58; }
-/* Спортивный канал — «Купить трансляцию», насыщенный салатовый. */
-.fe-watch-buy { background: #5DAE12; }
-.fe-watch-buy:hover { background: #6BC016; }
 .tz-about-title { font-size: 24px; font-weight: 700; margin: 0 0 12px; }
 
 /* Блок «Все выпуски шоу» (макет V8K, шоу «Мама в 16») */
@@ -2357,7 +2352,7 @@ html:is([data-mode="v1"],[data-mode="v2"],[data-mode="v3"]) .fav-gal .gal-grid {
 
 /* ===== Вариант 3 (макет 125S) — одноряд «Сейчас в эфире»: постер эфира +
    мета снизу всегда, при наведении постер меняется на кадр текущего эфира. ===== */
-html:is([data-copy="v4c"],[data-copy="v4d"],[data-copy="v4e"],[data-copy="v4f"]) .gal-grid {
+html:is([data-copy="v3"],[data-copy="v4c"],[data-copy="v4d"],[data-copy="v4e"],[data-copy="v4f"]) .gal-grid {
   grid-template-rows: 1fr;
   grid-auto-columns: calc((100% - 4 * 16px) / 5);
   gap: 16px;
@@ -3061,7 +3056,7 @@ html[data-nav="new"] .topbar { display: none; }
 html:is([data-mode="v2"],[data-mode="v3"]) .gal-grid {
   grid-auto-columns: min(272px, calc((100% - 4 * 8px) / 5));
 }
-html:is([data-copy="v4c"],[data-copy="v4d"],[data-copy="v4e"],[data-copy="v4f"]) .gal-grid {
+html:is([data-copy="v3"],[data-copy="v4c"],[data-copy="v4d"],[data-copy="v4e"],[data-copy="v4f"]) .gal-grid {
   gap: 8px;
   grid-auto-columns: min(272px, calc((100% - 4 * 8px) / 5));
 }
@@ -3116,57 +3111,59 @@ html:is([data-copy="v4c"],[data-copy="v4d"],[data-copy="v4e"],[data-copy="v4f"])
 }
 /* Стрелки и градиенты-растушёвки по краям ленты дат при скролле. */
 .day-tabs-wrap { position: relative; }
-.is-embed .dt-fade { position: absolute; top: 0; bottom: 16px; width: 76px; z-index: 3; display: flex; align-items: center; pointer-events: none; transition: opacity .2s ease; }
-.is-embed .dt-fade.is-hidden { opacity: 0; }
-.is-embed .dt-fade.r { right: 0; justify-content: flex-end; background: linear-gradient(90deg, transparent, #000 72%); }
-.is-embed .dt-fade.l { left: 0; justify-content: flex-start; background: linear-gradient(270deg, transparent, #000 72%); }
-.is-embed .dt-arrow { pointer-events: auto; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; color: #fff; cursor: pointer; opacity: .9; }
-.is-embed .dt-fade.l .dt-arrow { margin-left: 2px; }
-.is-embed .dt-fade.r .dt-arrow { margin-right: 2px; }
+.dt-fade { position: absolute; top: 0; bottom: 16px; width: 76px; z-index: 3; display: flex; align-items: center; pointer-events: none; transition: opacity .2s ease; }
+.dt-fade.is-hidden { opacity: 0; }
+.dt-fade.r { right: 0; justify-content: flex-end; background: linear-gradient(90deg, transparent, #000 72%); }
+.dt-fade.l { left: 0; justify-content: flex-start; background: linear-gradient(270deg, transparent, #000 72%); }
+.dt-arrow { pointer-events: auto; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; color: #fff; cursor: pointer; opacity: .9; }
+.dt-fade.l .dt-arrow { margin-left: 2px; }
+.dt-fade.r .dt-arrow { margin-right: 2px; }
 /* Табы переключения дат — в одну линию со скроллом (без переноса). */
 .is-embed .day-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 8px; margin-bottom: 0; }
 .is-embed .day-tabs::-webkit-scrollbar { display: none; }
 .is-embed .day-tab { flex: 0 0 auto; height: 32px; padding: 0 13px; font-size: 14px; }
 /* Карточка передачи — среднее по размеру (меньше исходного, но крупнее совсем мелкого). */
-.is-embed .tz-list { gap: 18px; }
-.is-embed .fe-card { gap: 12px; }
+:is(.is-embed, .is-v4list) .tz-list { gap: 18px; }
+:is(.is-embed, .is-v4list) .fe-card { gap: 12px; }
 /* Вариант 1 (шторка): карточка текущего эфира выезжает влево (её время сдвигается к
    краю), у остальных строк время стоит в 12px от постера — без общего сдвига.
    Сдвиг = разнице постеров, слева добавляем столько же паддинга, чтобы время эфира
    не обрезалось. */
 .is-embed:not(.is-v4f) .fe-card.is-now { margin-left: -56px; }
 .is-embed:not(.is-v4f) .sched-col { padding-left: 56px; }
-.is-embed .fe-timecol { width: 66px; min-width: 66px; gap: 4px; }
-.is-embed .fe-card .fe-time { font-size: 17px; line-height: 21px; }
+:is(.is-embed, .is-v4list) .fe-timecol { width: 66px; min-width: 66px; gap: 4px; }
+:is(.is-embed, .is-v4list) .fe-card .fe-time { font-size: 17px; line-height: 21px; }
 /* «в эфире» — в одну строку (без переноса). */
-.is-embed .fe-onair { font-size: 12px; white-space: nowrap; }
-.is-embed .fe-poster { width: 168px; border-radius: 12px; }
-.is-embed .fe-card:not(.is-now) .fe-poster { margin-left: 0; }
+:is(.is-embed, .is-v4list) .fe-onair { font-size: 12px; white-space: nowrap; }
+:is(.is-embed, .is-v4list) .fe-poster { width: 168px; border-radius: 12px; }
+:is(.is-embed, .is-v4list) .fe-card:not(.is-now) .fe-poster { margin-left: 0; }
 /* Вариант 1 (шторка): постер эфира крупнее (на величину сдвига 56px), правый край
    совпадает с остальными, сам постер выступает влево. */
 .is-embed:not(.is-v4f) .fe-card.is-now .fe-poster { width: 224px; border-radius: 16px; }
 /* Вариант 2 (v4f): все постеры одного размера и выровнены по левому краю (в т.ч. эфир). */
-.is-v4f .fe-card.is-now { margin-left: 0; }
-.is-v4f .fe-poster,
-.is-v4f .fe-card.is-now .fe-poster { width: 200px; border-radius: 14px; }
+:is(.is-v4f, .is-v4list) .fe-card.is-now { margin-left: 0; }
+:is(.is-v4f, .is-v4list) .fe-poster { width: 200px; border-radius: 14px; }
+/* Эфир — постер крупнее; между блоками расписания +2px. */
+:is(.is-v4f, .is-v4list) .fe-card.is-now .fe-poster { width: 288px; border-radius: 18px; }
+:is(.is-v4f, .is-v4list) .tz-list { gap: 20px; }
 /* Постер чуть увеличивается на наведении — только у прямого эфира и контента с Иви. */
-.is-embed .fe-card.is-now .fe-poster,
-.is-embed .fe-card.is-ivi .fe-poster { transition: transform .2s ease; }
-.is-embed .fe-card.is-now .fe-poster:hover,
-.is-embed .fe-card.is-ivi .fe-poster:hover { transform: scale(1.04); }
-.is-embed .fe-mins { font-size: 10px; padding: 2px 6px; }
-.is-embed .fe-ttl { font-size: 18px; line-height: 23px; }
-.is-embed .fe-genre { font-size: 13px; margin-top: 3px; }
-.is-embed .fe-desc { font-size: 13px; line-height: 18px; margin-top: 7px; -webkit-line-clamp: 2; }
-.is-embed .fe-info .fe-watch { margin-top: 14px; }
+:is(.is-embed, .is-v4list) .fe-card.is-now .fe-poster,
+:is(.is-embed, .is-v4list) .fe-card.is-ivi .fe-poster { transition: transform .2s ease; }
+:is(.is-embed, .is-v4list) .fe-card.is-now .fe-poster:hover,
+:is(.is-embed, .is-v4list) .fe-card.is-ivi .fe-poster:hover { transform: scale(1.04); }
+:is(.is-embed, .is-v4list) .fe-mins { font-size: 10px; padding: 2px 6px; }
+:is(.is-embed, .is-v4list) .fe-ttl { font-size: 18px; line-height: 23px; }
+:is(.is-embed, .is-v4list) .fe-genre { font-size: 13px; margin-top: 3px; }
+:is(.is-embed, .is-v4list) .fe-desc { font-size: 13px; line-height: 18px; margin-top: 7px; -webkit-line-clamp: 2; }
+:is(.is-embed, .is-v4list) .fe-info .fe-watch { margin-top: 14px; }
 /* Кнопка «Смотреть на Иви» — заметно меньше. */
-.is-embed .fe-watch { height: 28px; padding: 0 12px; font-size: 12px; border-radius: 99px; }
-.is-embed .tz-about-title { font-size: 20px; }
+:is(.is-embed, .is-v4list) .fe-watch { height: 28px; padding: 0 12px; font-size: 12px; border-radius: 99px; }
+:is(.is-embed, .is-v4list) .tz-about-title { font-size: 20px; }
 /* Постеры блока серий («Все выпуски шоу на Иви») — как у остальных + выравниваем
    левый край блока по постерам передач (ширина таймкода 70px + gap 14px). */
-.is-embed .ep-card { flex: 0 0 168px; min-width: 168px; }
+:is(.is-embed, .is-v4list) .ep-card { flex: 0 0 168px; min-width: 168px; }
 /* Блок серий ближе к постеру сверху и с чуть меньшим заголовком. */
-.is-embed .fe-series { margin-left: 84px; margin-top: -2px; margin-bottom: 24px; }
-.is-embed .fe-series-title { font-size: 15px; line-height: 19px; margin-bottom: 10px; }
+:is(.is-embed, .is-v4list) .fe-series { margin-left: 84px; margin-top: -2px; margin-bottom: 24px; }
+:is(.is-embed, .is-v4list) .fe-series-title { font-size: 15px; line-height: 19px; margin-bottom: 10px; }
 /* Блок «Сейчас в эфире» в шторке не показываем. */
 .is-embed .now-air { display: none; }
