@@ -15,17 +15,15 @@ const MODES = [
   { id: "v4", label: "Вариант 1", sub: "Гипотеза D", hidden: true },
   { id: "v4b", label: "Вариант 2 (архив)", sub: "Плеер + список каналов", hidden: true },
   { id: "v4c", label: "Одноряд «Сейчас в эфире»", sub: "", hidden: true },
-  // В интерфейсе — только «Вариант 1» (бывший В3, макет) и «Вариант 2» (пока его дубль).
-  { id: "v4d", label: "Вариант 1", sub: "Плеер + лента каналов (макет)" },
-  { id: "v4e", label: "Вариант 2", sub: "Дубль Варианта 1 — для доработки" },
-  { id: "v4f", label: "Вариант 3", sub: "Дубль Варианта 2 — для доработки" },
+  // v4d — прежний «Вариант 1», убран из интерфейса (код оставляем).
+  { id: "v4d", label: "Вариант 1 (архив)", sub: "Плеер + лента каналов (макет)", hidden: true },
+  // В интерфейсе — только «Вариант 1» (v4e, шторка справа) и «Вариант 2» (v4f, канал сразу).
+  { id: "v4e", label: "Вариант 1", sub: "Телепрограмма канала — шторкой справа" },
+  { id: "v4f", label: "Вариант 2", sub: "Сразу программа канала + фильтры" },
 ];
 // v4b/v4c/v4d/v4e визуально на базе v4: отдаём им data-variant="v4", различаем через data-copy.
 const variantAttr = (id) => (["v4b", "v4c", "v4d", "v4e", "v4f"].includes(id) ? "v4" : id);
 
-// ---------- Навигация прототипа: старая / новая (меняет только шапку-навигацию) ----------
-const NAV_KEY = "ivi-proto-nav";
-const getNav = () => { try { return localStorage.getItem(NAV_KEY) || "old"; } catch { return "old"; } };
 // В интерфейсе показываем только видимые варианты (прежние В1–В3 и As is скрыты).
 const navModes = () => MODES.filter((m) => !m.hidden);
 
@@ -42,45 +40,6 @@ function renderModeTabs() {
       setMode(t.dataset.mode); close();
     })
   );
-}
-
-// Новое меню (макет IBW) — в новой навигации показываем и на ТВ онлайн / Программе.
-const PA = "https://app.paper.design/file-assets/01M45XC9MW0NZTHRFA799G9DJ7/";
-function ensureNewNav() {
-  if (document.querySelector(".mh-nav")) return;       // на новой главной уже есть
-  const topbar = document.querySelector(".topbar");
-  if (!topbar) return;                                  // вставляем только там, где была старая шапка
-  const el = document.createElement("header");
-  el.className = "mh-nav";
-  el.innerHTML = `
-    <a class="mh-nav-logo" href="main.html" aria-label="Иви"><img src="${PA}06CX82JTQBEJPQWZX8M5167B35.png" alt="Иви"></a>
-    <div class="mh-nav-center">
-      <button class="mh-nav-search" aria-label="Поиск"><svg viewBox="0 0 24 24" width="22" height="22"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M20 20l-4-4"/></svg></button>
-      <nav class="mh-nav-pill">
-        <a href="#">Фильмы</a>
-        <a href="#">Сериалы</a>
-        <a href="#">Шоу</a>
-        <a href="index.html" class="is-current">ТВ</a>
-        <a href="#" class="mh-nav-sport">Спорт <span class="mh-nav-badge">ЧМ<br>26</span></a>
-      </nav>
-    </div>
-    <div class="mh-nav-right">
-      <button class="mh-nav-avatar" aria-label="Профиль"><img src="${PA}65Q13X5PFWKCV8V00FB9GJ8GZY.png" alt=""></button>
-    </div>`;
-  topbar.parentNode.insertBefore(el, topbar);
-}
-
-function setNav(nav) {
-  try { localStorage.setItem(NAV_KEY, nav); } catch {}
-  document.querySelectorAll(".nav-seg").forEach((b) => b.classList.toggle("is-active", b.dataset.nav === nav));
-  renderModeTabs();
-  // Если текущий режим скрыт/недоступен — ставим «Вариант 1» (v4).
-  if (!MODES.find((m) => m.id === getMode() && !m.disabled && !m.hidden)) setMode("v4d");
-  // Переход на соответствующую главную: новая — новая главная, старая — ТВ онлайн.
-  const target = nav === "new" ? "main.html" : "index.html";
-  if (!location.pathname.endsWith("/" + target) && !location.pathname.endsWith(target)) {
-    location.href = target;
-  }
 }
 
 // ---------- Режим прототипа ----------
@@ -131,10 +90,9 @@ function build() {
   document.documentElement.setAttribute("data-variant", variantAttr(getMode()));
   document.documentElement.setAttribute("data-copy", getMode());
   document.documentElement.setAttribute("data-device", getDevice());
-  document.documentElement.setAttribute("data-nav", getNav());
-  if (getNav() === "new") ensureNewNav();
+  // Переключение навигации убрано из прототипа — всегда старая навигация.
+  document.documentElement.setAttribute("data-nav", "old");
 
-  const nav = getNav();
   const layer = document.createElement("div");
   layer.className = "mode-layer";
   layer.innerHTML = `
@@ -142,10 +100,6 @@ function build() {
       <div class="seg-group device-group">
         <button class="seg device-seg" data-device="desktop">Десктоп</button>
         <button class="seg device-seg is-disabled" data-device="mobile" disabled>Мобайл</button>
-      </div>
-      <div class="seg-group nav-group">
-        <button class="seg nav-seg${nav === "old" ? " is-active" : ""}" data-nav="old">Старая навигация</button>
-        <button class="seg nav-seg${nav === "new" ? " is-active" : ""}" data-nav="new">Новая</button>
       </div>
       <div class="seg-group mode-group"></div>
     </div>`;
@@ -157,9 +111,6 @@ function build() {
   page.parentNode.insertBefore(shell, page);
   shell.appendChild(page);
 
-  layer.querySelectorAll(".nav-seg").forEach((b) =>
-    b.addEventListener("click", () => { setNav(b.dataset.nav); close(); })
-  );
   layer.querySelectorAll(".device-seg").forEach((b) =>
     b.addEventListener("click", () => {
       if (b.disabled || b.classList.contains("is-disabled")) return;
@@ -173,7 +124,7 @@ function build() {
   // Стартуем с сохранённого режима; если он скрыт/отключён (прежние В1–В3, As is) —
   // откатываемся на «Вариант 1» (v4).
   let startMode = getMode();
-  if (!MODES.find((m) => m.id === startMode && !m.disabled && !m.hidden)) startMode = "v4d";
+  if (!MODES.find((m) => m.id === startMode && !m.disabled && !m.hidden)) startMode = "v4e";
   setMode(startMode);
   renderModeTabs();
   setDevice("desktop"); // мобайл временно скрыт

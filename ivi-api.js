@@ -164,6 +164,25 @@ export function filterByTag(channels, tag) {
   return channels.filter((c) => (c.tags || []).includes(tag));
 }
 
+// ---------- Заглушка платного спорта (макет Player 1JES) ----------
+// При выборе спортивного канала поверх плеера показываем промо подписки «Матч Футбол».
+export const isSportChannel = (ch) => (ch?.tags || []).includes("спортивные каналы");
+// Платный канал — по флагу API is_paid. В углу постера вместо лайка показываем рубль.
+export const isPaidChannel = (ch) => !!(ch && ch.is_paid);
+export const RUBLE_SVG = '<svg viewBox="0 0 24 24" width="17" height="17"><path fill="currentColor" d="M7.5 4h5.4c2.9 0 5.1 2 5.1 4.8 0 2.8-2.2 4.8-5.1 4.8H9.8V16h4.4v1.9H9.8V20H7.7v-2.1H6V16h1.7v-2.4H6v-1.9h1.5V4zm2.3 7.7h2.9c1.7 0 2.9-1.1 2.9-2.9S14.4 6 12.7 6H9.8v5.7z"/></svg>';
+export const SPORT_PAYWALL_HTML = `<div class="sport-paywall" hidden>
+  <img class="sport-pw-bg" src="https://app.paper.design/file-assets/01M45XC9MW0NZTHRFA799G9DJ7/271BMHR6TEVQ00YMMHMG1VD1A8.jpg" alt="">
+  <span class="sport-pw-grad"></span>
+  <div class="sport-pw-body">
+    <h3 class="sport-pw-title">Для просмотра подключи подписку Матч Футбол</h3>
+    <p class="sport-pw-sub">3 премиальных канала за 399 ₽ и более 3000 прямых трансляций за сезон — главные матчи, обзоры и аналитика</p>
+    <div class="sport-pw-btns">
+      <span class="sport-pw-btn is-primary">Подключить</span>
+      <span class="sport-pw-btn is-ghost">Есть сертификат или промокод</span>
+    </div>
+  </div>
+</div>`;
+
 // ---------- Демо-продолжение расписания ----------
 // Публичный API отдаёт только текущую передачу. Остальные строки — демо
 // (правдоподобное продолжение от реального времени окончания).

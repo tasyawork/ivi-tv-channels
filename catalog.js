@@ -1,7 +1,7 @@
 import {
   tvChannels, channelCover, channelThumb, HOME_TABS, TABS, filterByTag,
   collection, poster, accessLabel, contentThumb, nowOnChannel, telecastThumb,
-  mskTime, demoSchedule,
+  mskTime, demoSchedule, isSportChannel, SPORT_PAYWALL_HTML, isPaidChannel, RUBLE_SVG,
 } from "./ivi-api.js";
 
 // ---- Табы категорий (визуальные) ----
@@ -195,6 +195,7 @@ function fillPlayerBlock(el, tag) {
         <img class="player-bg" alt="">
         <div class="player-top"><div class="player-title">—</div><div class="player-sub">Прямой эфир</div></div>
         ${PLAYER_CONTROLS}
+        ${SPORT_PAYWALL_HTML}
       </div>
       <aside class="pv-side">
         <div class="pv-list"></div>
@@ -221,21 +222,27 @@ function fillPlayerBlock(el, tag) {
       ? `<div class="epg-row is-now"><span class="epg-time">${mskTime(tc.start)}</span><span class="epg-title">${tc.title}</span><span class="epg-underline"></span></div>`
       : "";
     // Чередуем длину названий: короткие чаще, средние и длинные — реже (длинных немного).
+    // Спортивный канал (Матч ТВ и т.п.) — платная «Купить трансляцию» (салатовая) вместо «Смотреть сейчас».
+    const liveChip = isSportChannel(current)
+      ? '<span class="epg-live is-buy">Купить трансляцию</span>'
+      : '<span class="epg-live">Смотреть сейчас</span>';
     const demo = demoSchedule(tc?.end, restrict, 14)
       .map((r, i) => {
         const base = i % 4 === 2 ? EPG_LONG[(i >> 2) % EPG_LONG.length]
           : i % 4 === 0 ? EPG_MED[(i >> 2) % EPG_MED.length]
           : EPG_SHORT[i % EPG_SHORT.length];
         const title = `${base}, ${restrict}+`;
-        return `<div class="epg-row is-demo"><span class="epg-time">${r.time}</span><span class="epg-title">${title}</span>${i % 4 === 1 ? '<span class="epg-live">Смотреть сейчас</span>' : ""}</div>`;
+        return `<div class="epg-row is-demo"><span class="epg-time">${r.time}</span><span class="epg-title">${title}</span>${i % 4 === 1 ? liveChip : ""}</div>`;
       })
       .join("");
     epgEl.innerHTML = nowRow + demo;
   }
 
+  const paywallEl = el.querySelector(".sport-paywall");
   function setChannel(ch) {
     if (!ch) return;
     current = ch;
+    if (paywallEl) paywallEl.hidden = !isSportChannel(ch); // спорт — промо подписки поверх плеера
     // Сохраняем кадр/название для бесшовного PiP на странице телепрограммы.
     const savePip = (thumb, title) => { try { localStorage.setItem("v4bCurrentChannel", ch.id); localStorage.setItem("v4bCurrentThumb", thumb); localStorage.setItem("v4bCurrentTitle", title); } catch {} };
     listEl.querySelectorAll(".pv-ch").forEach((r) => r.classList.toggle("is-active", r.dataset.id === String(ch.id)));
@@ -367,6 +374,7 @@ document.getElementById("v1Body")?.addEventListener("click", (e) => {
   const like = e.target.closest(".poster-like");
   if (!like) return;
   e.preventDefault(); e.stopPropagation();
+  if (like.classList.contains("poster-paid")) return; // платный значок — не лайкаем
   const cell = like.closest("[data-id]");
   if (cell) like.classList.toggle("is-fav", toggleFav(cell.dataset.id));
 }, true);
@@ -389,6 +397,24 @@ document.getElementById("v1Body")?.addEventListener("mouseout", (e) => {
 
 let showSeq = 0;
 
+// «Покупки» — купленные спортивные трансляции (дата крупно + название). Демоданные.
+const SPORT_BG = "https://app.paper.design/file-assets/01M45XC9MW0NZTHRFA799G9DJ7/271BMHR6TEVQ00YMMHMG1VD1A8.jpg";
+const PURCHASES = [
+  { date: "15 октября", title: "Футбол. РПЛ. «Спартак» — «Зенит»" },
+  { date: "16 октября", title: "Хоккей. КХЛ. ЦСКА — «Ак Барс»" },
+  { date: "18 октября", title: "Баскетбол. Евролига. ЦСКА — «Реал»" },
+  { date: "20 октября", title: "Бокс. Вечер профессионального бокса" },
+];
+function fillPurchases(el) {
+  el.innerHTML = `<h2 class="gal-head">Покупки <span class="chev">›</span></h2>
+    <div class="buys-row">${PURCHASES.map((p) => `
+      <a class="buy-card" href="#">
+        <div class="buy-thumb"><img loading="lazy" src="${SPORT_BG}" alt=""><span class="buy-badge">куплено</span></div>
+        <div class="buy-date">${p.date}</div>
+        <div class="buy-title">${p.title}</div>
+      </a>`).join("")}</div>`;
+}
+
 function renderFeedSections(container, tab) {
   // В Варианте 2 блок «Любимые каналы» (fav) не показываем.
   let feed = tab.tag ? categoryFeed(tab.tag)
@@ -398,6 +424,8 @@ function renderFeedSections(container, tab) {
     feed = [...feed];
     feed.splice(1, 0, { kind: "show" });
   }
+  // «Мои каналы»: первой подборкой под плеером — «Покупки» (купленные спортивные трансляции).
+  if (tab.tag === "__my") feed = [{ kind: "purchases" }, ...feed];
   showSeq = 0;
   if (tileIO) tileIO.disconnect();
   container.innerHTML = feed.map((b) => {
@@ -409,8 +437,10 @@ function renderFeedSections(container, tab) {
     if (b.kind === "show") return `<section class="gal show-gal"></section>`;
     if (b.kind === "topshows") return `<div class="topshows"></div>`;
     if (b.kind === "fav") return `<section class="fav"></section>`;
+    if (b.kind === "purchases") return `<section class="buys"></section>`;
     return "";
   }).join("");
+  container.querySelectorAll(".buys").forEach(fillPurchases);
   container.querySelectorAll(".fav").forEach(fillFavs);
   container.querySelectorAll(".gal[data-cat]").forEach(fillGallery);
   container.querySelectorAll(".live-block").forEach(fillLiveBlock);
@@ -440,6 +470,10 @@ function toggleFav(id) {
 }
 // Сердце (макет): дефолт — контур, солид — залитое малиновым.
 const HEART_SVG = '<svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>';
+// Угловой значок постера: платный канал — рубль (с тултипом), иначе лайк-сердечко.
+const cornerBadge = (ch) => isPaidChannel(ch)
+  ? `<span class="poster-like poster-paid" data-tip="Платный канал" aria-label="Платный канал">${RUBLE_SVG}</span>`
+  : `<span class="poster-like${isFav(ch.id) ? " is-fav" : ""}" role="button" aria-label="Лайк канала" data-tip="Лайк канала">${HEART_SVG}</span>`;
 // Иконка эфира (концентрические дуги + точка) — пульсирует у текущей передачи.
 const BCAST_SVG = '<svg viewBox="0 0 20 20" width="13" height="13"><path fill="currentColor" d="M4.6 4.6a7.6 7.6 0 000 10.8L3.3 16.7a9.4 9.4 0 010-13.4L4.6 4.6zm10.8-1.3a9.4 9.4 0 010 13.4l-1.3-1.3a7.6 7.6 0 000-10.8l1.3-1.3zM6.9 6.9a4.4 4.4 0 000 6.2L5.6 14.4a6.2 6.2 0 010-8.8L6.9 6.9zm6.2-1.3a6.2 6.2 0 010 8.8l-1.3-1.3a4.4 4.4 0 000-6.2l1.3-1.3zM10 8.3a1.7 1.7 0 110 3.4 1.7 1.7 0 010-3.4z"/></svg>';
 
@@ -609,9 +643,10 @@ function showLikeTip(el) {
   if (!likeTip) {
     likeTip = document.createElement("div");
     likeTip.className = "like-tip";
-    likeTip.innerHTML = '<span class="like-tip-box">Лайк канала</span>';
+    likeTip.innerHTML = '<span class="like-tip-box"></span>';
     document.body.appendChild(likeTip);
   }
+  likeTip.querySelector(".like-tip-box").textContent = el.dataset.tip || "Лайк канала";
   const r = el.getBoundingClientRect();
   likeTip.style.left = (r.left + r.width / 2) + "px";
   likeTip.style.top = r.top + "px";
@@ -650,11 +685,8 @@ function renderV1() {
       v4bPlayer.setChannelById(chParam);
       history.replaceState(null, "", location.pathname);
     }
-    // Возврат с «Программы передач» — плеер вырастает из PiP в полный размер.
-    if (sessionStorage.getItem("v4bPipBack")) {
-      sessionStorage.removeItem("v4bPipBack");
-      requestAnimationFrame(playerGrowFromPip);
-    }
+    // Возврат с «Программы передач» — без анимации: плеер сразу на своём месте.
+    sessionStorage.removeItem("v4bPipBack");
   } else {
     renderFeedSections(body, tab);
   }
@@ -711,24 +743,10 @@ document.querySelector(".section-switch")?.addEventListener("click", (e) => {
   const toProg = /программа/i.test(item.textContent);
   if (!toProg) return; // уже на ТВ онлайн
   e.preventDefault();
-  const href = item.getAttribute("href") || "program.html";
-  sessionStorage.setItem("v4bPipBack", "1"); // чтобы при возврате сыграть обратную анимацию
-  if (flipPlayerToPip()) setTimeout(() => { location.href = href; }, 440);
-  else location.href = href;
+  // Без анимации перелёта в PiP — сразу открываем программу.
+  location.href = item.getAttribute("href") || "program.html";
 });
 
-// Возврат «назад» из bfcache: главная может восстановиться с плеером, застрявшим в
-// PiP (мы уходили в момент анимации) — растим его обратно до полного размера.
-window.addEventListener("pageshow", (e) => {
-  if (!e.persisted) return;
-  const wrap = document.querySelector(".v4b-player.is-pip");
-  if (!wrap) return;
-  const player = wrap.querySelector(".player");
-  wrap.classList.remove("is-pip");
-  wrap.style.minHeight = "";
-  if (player) { player.style.transition = "none"; player.style.transform = ""; }
-  requestAnimationFrame(playerGrowFromPip);
-});
 
 // Кнопка «Телепрограмма» на главной (Варианты 1/2): плеер плавно уезжает в PiP
 // (левый нижний угол), затем открывается программа передач. Флаг v4bPipBack ставим
@@ -738,10 +756,8 @@ document.addEventListener("click", (e) => {
   const a = e.target.closest(".pv-allprog");
   if (!a || !hasPlayer()) return;
   e.preventDefault();
-  const href = a.getAttribute("href") || "program.html";
-  try { sessionStorage.setItem("v4bPipBack", "1"); } catch {}
-  if (flipPlayerToPip()) setTimeout(() => { location.href = href; }, 440);
-  else location.href = href;
+  // Без анимации перелёта в PiP — сразу открываем программу.
+  location.href = a.getAttribute("href") || "program.html";
 });
 
 // Категорийная лента: заголовок + 2 строки плиток каналов (по 5), 16:9.
@@ -793,9 +809,8 @@ function v4cCell(ch) {
     <div class="gal-cell v4c-cell" data-id="${ch.id}" data-paid="${ch.is_paid ? 1 : 0}">
       <a class="v4c-thumb" href="player.html?id=${ch.id}" title="${ch.title}">
         <img class="v4c-img" loading="lazy" src="${channelThumb(ch)}" alt="${ch.title}">
-        ${ch.is_paid ? '<span class="gal-pay" title="Платный канал">₽</span>' : ""}
         <span class="v4c-mins" hidden></span>
-        <span class="poster-like${isFav(ch.id) ? " is-fav" : ""}" role="button" aria-label="Лайк канала" data-tip="Лайк канала">${HEART_SVG}</span>
+        ${cornerBadge(ch)}
       </a>
       <a class="v4c-meta" href="player.html?id=${ch.id}">
         <span class="v4c-logo"><img loading="lazy" src="${channelThumb(ch)}" alt=""></span>

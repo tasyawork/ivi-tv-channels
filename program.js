@@ -1,8 +1,13 @@
 import {
   tvChannels, channelThumb, channelCover, nowOnChannel, telecastThumb,
   mskTime, HOME_TABS, TABS, filterByTag, demoSchedule,
-  collection, poster, accessLabel, contentThumb,
+  collection, poster, accessLabel, contentThumb, isPaidChannel, RUBLE_SVG,
 } from "./ivi-api.js";
+
+// Угловой значок постера: платный канал — рубль (с тултипом), иначе лайк-сердечко.
+const cornerBadge = (ch) => isPaidChannel(ch)
+  ? `<span class="poster-like poster-paid" data-tip="Платный канал" aria-label="Платный канал">${RUBLE_SVG}</span>`
+  : `<span class="poster-like${isFav(ch.id) ? " is-fav" : ""}" role="button" aria-label="Лайк канала" data-tip="Лайк канала">${HEART_SVG}</span>`;
 
 const grid = document.getElementById("channelGrid");
 const gridTitle = document.getElementById("gridTitle");
@@ -43,8 +48,18 @@ const getMode = () => document.documentElement.getAttribute("data-mode") || "asi
 const variant = () => document.documentElement.getAttribute("data-variant") || "asis";
 const isV1like = () => ["v1", "v2", "v3"].includes(getMode());
 const isV4c = () => ["v4c", "v4d", "v4e", "v4f"].includes(document.documentElement.getAttribute("data-copy"));
-const tabList = () => (isV1like() ? TABS : HOME_TABS);
-const defaultTab = () => (isV1like() ? 2 : 0); // «Федеральные»
+const copy = () => document.documentElement.getAttribute("data-copy");
+// Вариант 1 (v4e) — «Вся телепрограмма» открывается шторкой справа.
+const isV4eOnly = () => copy() === "v4e";
+// Вариант 2 (v4f) — без страницы «все каналы»: сразу программа одного канала,
+// сверху фильтры (категория + дата) и лента каналов (как screenshot 18/19).
+const isV4f = () => copy() === "v4f";
+const isV4any = () => ["v4d", "v4e", "v4f"].includes(copy());
+// В Вариантах после «Все каналы» добавляем «Мои каналы» (как в каталоге).
+const MY_TAB = { label: "Мои каналы", tag: "__my", heading: "Мои каналы" };
+const tabList = () => (isV4any() ? [TABS[0], MY_TAB, ...TABS.slice(1)] : isV1like() ? TABS : HOME_TABS);
+// «Федеральные»: в Вариантах сместилась на индекс 3 (Все, Мои, Развлек., Федеральные).
+const defaultTab = () => (isV4any() ? 3 : isV1like() ? 2 : 0);
 let activeTab = defaultTab();
 const nowCache = new Map();
 const loadNow = (id) => {
@@ -269,7 +284,7 @@ function channelCard(ch) {
         <img class="poster-img-el" loading="lazy" src="${channelCover(ch)}" alt="${ch.title}">
         <span class="poster-left" data-left="${ch.id}" hidden></span>
         ${v4c ? `<span class="v4c-pgrad"></span><span class="v4c-pt" data-pt="${ch.id}"></span><span class="v4c-pm" data-pm="${ch.id}" hidden></span>` : ""}
-        <span class="poster-like${isFav(ch.id) ? " is-fav" : ""}" role="button" aria-label="Лайк канала" data-tip="Лайк канала">${HEART_SVG}</span>
+        ${cornerBadge(ch)}
         <div class="prog-line" data-prog="${ch.id}" hidden><span class="prog-fill"></span></div>
       </div>
       ${chanRow}
@@ -354,6 +369,7 @@ async function fillCard(ch) {
 
 function renderTab() {
   const tab = tabList()[activeTab];
+  if (isV4f()) { renderV4f(tab); return; }
   gridTitle.innerHTML = `${tab.heading} <span class="chev">›</span>`;
   const list = filterByTag(channels, tab.tag);
   if (!list.length) { grid.innerHTML = `<div class="grid-empty">В этой категории нет каналов</div>`; return; }
@@ -455,18 +471,20 @@ grid.addEventListener("click", (e) => {
   const like = e.target.closest(".poster-like");
   if (!like) return;
   e.preventDefault(); e.stopPropagation();
+  if (like.classList.contains("poster-paid")) return; // платный значок — не лайкаем
   const card = like.closest("[data-id]");
   if (card) like.classList.toggle("is-fav", toggleFav(card.dataset.id));
 }, true);
-// Тултип над сердечком лайка.
+// Тултип над значком (лайк / платный канал).
 let likeTip = null;
 function showLikeTip(el) {
   if (!likeTip) {
     likeTip = document.createElement("div");
     likeTip.className = "like-tip";
-    likeTip.innerHTML = '<span class="like-tip-box">Лайк канала</span>';
+    likeTip.innerHTML = '<span class="like-tip-box"></span>';
     document.body.appendChild(likeTip);
   }
+  likeTip.querySelector(".like-tip-box").textContent = el.dataset.tip || "Лайк канала";
   const r = el.getBoundingClientRect();
   likeTip.style.left = (r.left + r.width / 2) + "px";
   likeTip.style.top = r.top + "px";
@@ -484,12 +502,28 @@ grid.addEventListener("click", (e) => {
 window.addEventListener("keydown", (e) => { if (e.key === "Escape") hidePop(); });
 
 // ---- Загрузка каналов ----
+// Вариант 1: пришли из плеера — листаем к выбранному каналу и подсвечиваем его кнопку.
+function scrollToSelectedChannel(id) {
+  const card = grid.querySelector(`.card[data-id="${id}"]`);
+  if (!card) return;
+  card.querySelector(".allprog")?.classList.add("is-selected");
+  // Сетка дорастает по мере загрузки постеров — повторяем прокрутку, чтобы попасть точно.
+  const doScroll = () => card.scrollIntoView({ block: "center" });
+  requestAnimationFrame(doScroll);
+  setTimeout(doScroll, 400);
+  setTimeout(doScroll, 1200);
+}
 (async function init() {
   grid.innerHTML = `<div class="grid-empty">Загружаем каналы Иви…</div>`;
   try {
     channels = await tvChannels();
+    // Выбранный на плеере канал (Вариант 1): показываем «Все каналы», чтобы он точно был в списке.
+    let seekCh = null;
+    if (isV4eOnly()) { try { seekCh = localStorage.getItem("v4bCurrentChannel"); } catch {} }
+    if (seekCh) activeTab = 0;
     renderTabs(); // теперь есть каналы — наполняем мини-кластеры табов (v3)
     renderTab();
+    if (seekCh) scrollToSelectedChannel(seekCh);
   } catch (err) {
     grid.innerHTML = `<div class="grid-empty">Не удалось загрузить каналы: ${err.message}</div>`;
   }
@@ -631,11 +665,129 @@ function closeSchDrawer() {
   schDim.classList.remove("is-open");
   document.documentElement.style.overflow = "";
 }
-document.addEventListener("click", (e) => {
+// Вариант 1 (v4e): клик по «Вся телепрограмма» открывает канал шторкой справа.
+grid.addEventListener("click", (e) => {
+  if (!isV4eOnly()) return;
   const a = e.target.closest(".allprog");
-  if (!a || !isV4e()) return;
+  if (!a) return;
   e.preventDefault();
   const id = new URLSearchParams((a.getAttribute("href").split("?")[1]) || "").get("id");
   if (id) openSchDrawer(id);
 });
 window.addEventListener("keydown", (e) => { if (e.key === "Escape") closeSchDrawer(); });
+
+// ---- Вариант 2 (v4f): лента каналов (screenshot 18) + программа канала во фрейме ----
+let v4fId = null, v4fFrame = null;
+function v4fDayParam() { return nowMode ? "now" : String(activeDate); }
+function loadV4fFrame() {
+  if (!v4fFrame || v4fId == null) return;
+  v4fFrame.src = `schedule.html?id=${v4fId}&embed=1&v4f=1&day=${v4fDayParam()}`;
+}
+function markV4fActive() {
+  document.querySelectorAll(".v4f-strip .v4d-chip").forEach((c) => {
+    const on = String(c.dataset.id) === String(v4fId);
+    c.classList.toggle("is-active", on);
+    if (on) c.scrollIntoView({ block: "nearest", inline: "nearest" });
+  });
+}
+const V4F_ARROW = '<svg viewBox="0 0 12 32" width="11" height="29"><path fill="currentColor" d="M11.607 14.626C12.131 15.461 12.131 16.539 11.607 17.374L2.425 32L0 30.352L9.01 16L0 1.648L2.425 0L11.607 14.626Z"/></svg>';
+let v4fSyncFades = null;
+function setupV4f() {
+  if (document.querySelector(".v4f-strip-wrap")) return;
+  const wrap = document.createElement("div");
+  wrap.className = "v4f-strip-wrap";
+  wrap.innerHTML = `<div class="v4f-rail">
+      <div class="v4d-strip v4f-strip"></div>
+      <div class="v4d-strip-fade l is-hidden"><span class="v4d-strip-arrow is-left">${V4F_ARROW}</span></div>
+      <div class="v4d-strip-fade r is-hidden"><span class="v4d-strip-arrow">${V4F_ARROW}</span></div>
+    </div>
+    <div class="v4f-epg"><iframe class="v4f-frame" title="Программа канала"></iframe></div>`;
+  document.querySelector(".tabs-bar").after(wrap);
+  v4fFrame = wrap.querySelector(".v4f-frame");
+  const strip = wrap.querySelector(".v4f-strip");
+  strip.addEventListener("click", (e) => {
+    const chip = e.target.closest(".v4d-chip");
+    if (!chip) return;
+    v4fId = chip.dataset.id;
+    markV4fActive();
+    loadV4fFrame();
+  });
+  // Стрелки + градиенты по краям ленты каналов (как у ленты в каталоге).
+  const fadeL = wrap.querySelector(".v4d-strip-fade.l"), fadeR = wrap.querySelector(".v4d-strip-fade.r");
+  fadeR.querySelector(".v4d-strip-arrow").addEventListener("click", () => strip.scrollBy({ left: strip.clientWidth * 0.8, behavior: "smooth" }));
+  fadeL.querySelector(".v4d-strip-arrow").addEventListener("click", () => strip.scrollBy({ left: -strip.clientWidth * 0.8, behavior: "smooth" }));
+  const sync = () => {
+    const scrollable = strip.scrollWidth > strip.clientWidth + 4;
+    fadeR.classList.toggle("is-hidden", !scrollable || strip.scrollLeft + strip.clientWidth >= strip.scrollWidth - 4);
+    fadeL.classList.toggle("is-hidden", strip.scrollLeft <= 4);
+  };
+  strip.addEventListener("scroll", sync, { passive: true });
+  window.addEventListener("resize", sync);
+  v4fSyncFades = sync;
+  // Залипание ленты вплотную под категориями (учитываем 8px-зазор сверху у табов).
+  const setRailTop = () => {
+    const bar = document.querySelector(".tabs-bar");
+    wrap.querySelector(".v4f-rail").style.top = ((bar ? Math.round(bar.getBoundingClientRect().height) : 62) + 8) + "px";
+  };
+  setRailTop(); window.addEventListener("resize", setRailTop);
+  // Лента каналов (2-й уровень) прячется при скролле вниз и сразу появляется, как только
+  // идём вверх (к верхним табам) — порог минимальный, чтобы реагировало мгновенно.
+  let lastY = window.scrollY, railDown = false;
+  window.addEventListener("scroll", () => {
+    const y = window.scrollY, de = document.documentElement;
+    if (y < 120) { de.classList.remove("v4f-railhidden"); railDown = false; lastY = y; return; }
+    if (y > lastY + 6 && !railDown) { de.classList.add("v4f-railhidden"); railDown = true; }
+    else if (y < lastY - 2 && railDown) { de.classList.remove("v4f-railhidden"); railDown = false; }
+    lastY = y;
+  }, { passive: true });
+  // Наведение на верхние табы (или саму ленту) в залипшем состоянии показывает ленту
+  // каналов; уводим курсор — она снова прячется.
+  const tabsBar = document.querySelector(".tabs-bar");
+  const railEl = wrap.querySelector(".v4f-rail");
+  let peekT;
+  const showPeek = () => { clearTimeout(peekT); if (document.documentElement.classList.contains("v4f-railhidden")) document.documentElement.classList.add("v4f-peek"); };
+  const hidePeek = () => { clearTimeout(peekT); peekT = setTimeout(() => document.documentElement.classList.remove("v4f-peek"), 140); };
+  tabsBar?.addEventListener("mouseenter", showPeek);
+  tabsBar?.addEventListener("mouseleave", hidePeek);
+  railEl.addEventListener("mouseenter", showPeek);
+  railEl.addEventListener("mouseleave", hidePeek);
+}
+function renderV4f(tab) {
+  setupV4f();
+  const strip = document.querySelector(".v4f-strip");
+  const list = filterByTag(channels, tab.tag);
+  strip.innerHTML = list.map((c) => `<button class="v4d-chip" data-id="${c.id}">
+    <span class="v4d-chip-logo"><img loading="lazy" src="${channelThumb(c)}" alt=""></span>
+    <span class="v4d-chip-text">
+      <span class="v4d-chip-name" data-prog="${c.id}">${c.title}</span>
+      <span class="v4d-chip-bar"><i style="width:35%"></i></span>
+    </span>
+  </button>`).join("");
+  if (!list.some((c) => String(c.id) === String(v4fId))) v4fId = list[0]?.id ?? null;
+  markV4fActive();
+  loadV4fFrame();
+  v4fSyncFades?.();
+  list.forEach((c) => loadNow(c.id).then((tc) => {
+    if (!tc) return;
+    const p = strip.querySelector(`.v4d-chip-name[data-prog="${c.id}"]`);
+    if (p) p.textContent = tc.title;
+  }));
+}
+// Прокрутка к текущему эфиру: ждём, пока фрейм дорастёт до полной высоты (страница
+// станет достаточно длинной), и только тогда центрируем эфир с 1 прошедшей сверху.
+let v4fPendingNowTop = null;
+function v4fTryScrollNow() {
+  if (v4fPendingNowTop == null || !v4fFrame) return;
+  const frameTop = v4fFrame.getBoundingClientRect().top + window.scrollY;
+  const bar = document.querySelector(".tabs-bar");
+  const headH = (bar ? Math.round(bar.getBoundingClientRect().height) : 62) + 150; // липкие табы + ~1 прошедшая карточка
+  const target = Math.max(0, frameTop + v4fPendingNowTop - headH);
+  const maxY = document.scrollingElement.scrollHeight - window.innerHeight;
+  if (maxY >= target - 2) { window.scrollTo({ top: target, behavior: "auto" }); v4fPendingNowTop = null; }
+}
+// Высоту фрейма подгоняем под его контент (schedule.js шлёт scrollHeight).
+window.addEventListener("message", (e) => {
+  if (!e.data || !v4fFrame) return;
+  if (e.data.v4fHeight) { v4fFrame.style.height = e.data.v4fHeight + "px"; v4fTryScrollNow(); }
+  if (e.data.v4fNowTop != null) { v4fPendingNowTop = e.data.v4fNowTop; v4fTryScrollNow(); }
+});

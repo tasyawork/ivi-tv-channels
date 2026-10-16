@@ -1,6 +1,7 @@
 import {
   tvChannels, channelTelecasts, nowOnChannel, mskTime,
   channelThumb, telecastThumb, demoSchedule, collection, contentThumb, showEpisodes, showPoster,
+  isSportChannel,
 } from "./ivi-api.js";
 
 // Днём — шоу «Мама в 16», вечером — сериал «Холод» (реальные компиляции Иви).
@@ -59,8 +60,11 @@ let seriesEps = [];       // серии сериала «Холод» (вече�
 let showCover = "";       // постер «Мама в 16» для обложки передачи (не дублирует кадр серии)
 let seriesCover = "";     // постер «Холод» для обложки передачи
 let realCover = "";
-let activeDay = 0;
-let nowMode = false; // фильтр «Сейчас» — только текущая передача + 2 следующие
+// Вариант 2 (v4f): день/«сейчас» приходят из фильтров родительской страницы (?day=).
+const V4F = new URLSearchParams(location.search).get("v4f");
+const dayParam = new URLSearchParams(location.search).get("day");
+let activeDay = dayParam && dayParam !== "now" ? +dayParam : 0;
+let nowMode = dayParam === "now"; // фильтр «Сейчас» — только текущая передача + 2 следующие
 let firstRender = true;
 
 // Полный день. «Сейчас» всегда середина дня (13:00) — без привязки к реальному времени.
@@ -164,14 +168,20 @@ function renderList() {
       ? `<div class="fe-progline"><span class="fe-progfill" style="width:45%"></span></div>`
       : "";
     // Под Иви-контентом — лента серий: днём «Все выпуски шоу», вечером «Все серии сериала».
-    const block = blue
+    // В шторке/фрейме (embed) промо конкретных серий убираем — остаётся только кнопка «Смотреть на Иви».
+    const embed = document.documentElement.classList.contains("is-embed");
+    const block = (blue && !embed)
       ? (r.kind === "series"
           ? renderSeries(seriesEps, "Все серии сериала на Иви", true)
           : renderSeries(episodes, "Все выпуски шоу на Иви"))
       : "";
     // По макету ZGQ у текущего эфира кнопка «В эфир» стоит ПОД описанием (в колонке
     // инфо, слева); у остальных Иви-передач кнопка «Смотреть на Иви» — справа.
-    const watchBtn = blue ? `<a class="fe-watch" href="https://www.ivi.ru/" target="_blank" rel="noopener">${r.now ? "В эфир" : "Смотреть на Иви"}</a>` : "";
+    // Спортивный канал — вместо «Смотреть на Иви» платная «Купить трансляцию» (салатовая).
+    const sport = isSportChannel(channel);
+    const showBtn = blue || (sport && r.now);
+    const label = sport ? "Купить трансляцию" : (r.now ? "В эфир" : "Смотреть на Иви");
+    const watchBtn = showBtn ? `<a class="fe-watch${sport ? " fe-watch-buy" : ""}" href="https://www.ivi.ru/" target="_blank" rel="noopener">${label}</a>` : "";
     return `<div class="fe-card${r.now ? " is-now" : ""}${blue ? " is-ivi" : ""}${r.past ? " is-past" : ""}">
       <div class="fe-timecol">
         <span class="fe-time">${r.time}</span>
@@ -192,8 +202,10 @@ function renderList() {
   if (firstRender && activeDay === 0) {
     const nowCard = $("fullEpg").querySelector(".fe-card.is-now");
     if (nowCard) {
-      const y = nowCard.getBoundingClientRect().top + window.scrollY - 130;
-      window.scrollTo(0, Math.max(0, y));
+      const top = nowCard.getBoundingClientRect().top + window.scrollY;
+      // В v4f страница не скроллится внутри фрейма — передаём позицию родителю.
+      if (V4F) { try { parent.postMessage({ v4fNowTop: top }, "*"); } catch {} }
+      else window.scrollTo(0, Math.max(0, top - 130));
       firstRender = false;
     }
   }
@@ -223,6 +235,35 @@ function buildDayTabs() {
   });
 }
 
+// Стрелки + градиенты по краям ленты дат (как у ленты каналов): появляются с той
+// стороны, куда ещё можно прокрутить.
+function setupDayTabsNav() {
+  const row = $("dayTabs");
+  if (!row || row.parentElement.classList.contains("day-tabs-wrap")) return;
+  const wrap = document.createElement("div");
+  wrap.className = "day-tabs-wrap";
+  row.parentNode.insertBefore(wrap, row);
+  wrap.appendChild(row);
+  const mk = (side) => {
+    const d = document.createElement("div");
+    d.className = "dt-fade " + side + " is-hidden";
+    d.innerHTML = `<button class="dt-arrow" aria-label="${side === "l" ? "Назад" : "Вперёд"}">${ARROW_SVG}</button>`;
+    return d;
+  };
+  const fl = mk("l"), fr = mk("r");
+  wrap.append(fl, fr);
+  fr.querySelector(".dt-arrow").addEventListener("click", () => row.scrollBy({ left: row.clientWidth * 0.7, behavior: "smooth" }));
+  fl.querySelector(".dt-arrow").addEventListener("click", () => row.scrollBy({ left: -row.clientWidth * 0.7, behavior: "smooth" }));
+  const sync = () => {
+    const sc = row.scrollWidth > row.clientWidth + 4;
+    fr.classList.toggle("is-hidden", !sc || row.scrollLeft + row.clientWidth >= row.scrollWidth - 4);
+    fl.classList.toggle("is-hidden", row.scrollLeft <= 4);
+  };
+  row.addEventListener("scroll", sync, { passive: true });
+  window.addEventListener("resize", sync);
+  sync(); setTimeout(sync, 300);
+}
+
 // Градиент под фильтрами — только когда шапка залипла у верха при скролле.
 function setupStickyGradient() {
   const sticky = document.querySelector(".sched-sticky");
@@ -231,6 +272,14 @@ function setupStickyGradient() {
   window.addEventListener("scroll", update, { passive: true });
   window.addEventListener("resize", update);
   update();
+}
+
+// v4f: сообщаем родителю высоту контента, чтобы фрейм рос без своего скролла.
+function setupV4fHeight() {
+  const post = () => { try { parent.postMessage({ v4fHeight: document.body.scrollHeight }, "*"); } catch {} };
+  new ResizeObserver(post).observe(document.body);
+  window.addEventListener("load", post);
+  setTimeout(post, 600); setTimeout(post, 1500);
 }
 
 // ---- «Сейчас в эфире»: один этаж, инфо видно сразу ----
@@ -280,6 +329,7 @@ async function fillNowTile(card) {
 // контент делаем компактнее (класс is-embed на <html>).
 if (new URLSearchParams(location.search).get("embed")) {
   document.documentElement.classList.add("is-embed");
+  if (V4F) document.documentElement.classList.add("is-v4f"); // прячем табы дней (дата в фильтрах сверху)
   $("schClose").style.display = "none";
 } else {
   $("schClose").addEventListener("click", () => {
@@ -297,8 +347,9 @@ $("schExpand").addEventListener("click", () => {
 
 // ---- Инициализация ----
 (async function init() {
-  buildDayTabs();
+  if (!V4F) { buildDayTabs(); setupDayTabsNav(); } // в v4f даты задаются фильтром родителя
   setupStickyGradient();
+  if (V4F) setupV4fHeight();
   let channels;
   try { channels = await tvChannels(); } catch (e) {
     $("schTitle").textContent = "Не удалось загрузить канал";

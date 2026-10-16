@@ -1,8 +1,14 @@
 import {
   tvChannels, channelLogo, channelThumb, nowOnChannel, telecastThumb,
   mskTime, PLAYER_TABS, filterByTag, demoSchedule,
-  collection, poster, accessLabel, contentThumb,
+  collection, poster, accessLabel, contentThumb, isSportChannel, SPORT_PAYWALL_HTML,
 } from "./ivi-api.js";
+
+// Промо подписки «Матч Футбол» поверх плеера — для спортивных каналов.
+(function setupSportPaywall() {
+  const player = document.getElementById("player");
+  if (player && !player.querySelector(".sport-paywall")) player.insertAdjacentHTML("beforeend", SPORT_PAYWALL_HTML);
+})();
 
 const params = new URLSearchParams(location.search);
 const wantId = params.get("id");
@@ -204,6 +210,8 @@ function closeTvProg() { tvpOverlay?.classList.remove("is-open"); }
 async function renderChannel() {
   const crumb = document.getElementById("crumbChannel");
   if (crumb) crumb.textContent = channel.title;
+  const pw = document.querySelector(".sport-paywall");
+  if (pw) pw.hidden = !isSportChannel(channel);
   $("playerBg").src = channelThumb(channel);
   for (const id of ["chName", "chName2"]) $(id).textContent = channel.title;
   for (const id of ["chLogo", "chLogo2"]) $(id).innerHTML = `<img src="${channelThumb(channel)}" alt="">`;

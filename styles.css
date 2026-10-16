@@ -432,6 +432,9 @@ html[data-mode="v3"] .sched-row { padding: 7px 14px; border-radius: 999px; margi
   transition: background .15s ease, color .15s ease;
 }
 .allprog:hover { background: rgba(255, 255, 255, 0.14); color: #fff; }
+/* Канал, выбранный на плеере (Вариант 1): кнопка заметнее и чуть светлее остальных. */
+.allprog.is-selected { background: rgba(255, 255, 255, 0.22); color: #fff; }
+.allprog.is-selected:hover { background: rgba(255, 255, 255, 0.28); }
 
 /* ---------- Горизонтальные ряды ---------- */
 .rail {
@@ -882,7 +885,7 @@ html:is([data-mode="v2"],[data-mode="v3"]) #v1Body { padding-bottom: 88px; }
   align-items: start;
 }
 /* Встроенный плеер ТВ онлайн (Вариант 2, макет 10W9) — плеер + список каналов. */
-.v4b-player { margin-bottom: 8px; }
+.v4b-player { margin-bottom: 28px; }
 /* Плеер компактнее — размер задаём высотой, пропорции трансляции 16:9 сохраняем;
    список каналов занимает оставшуюся ширину. Первый экран помещается целиком. */
 /* Плеер вписывается в один экран по высоте (снизу чуть выглядывает контент), сохраняя
@@ -936,12 +939,61 @@ html:is([data-mode="v2"],[data-mode="v3"]) #v1Body { padding-bottom: 88px; }
 
 /* Варианты 2 и 3: равные и небольшие зазоры между шапкой · заголовком · табами · плеером (16px). */
 html:is([data-copy="v4b"],[data-copy="v4c"],[data-copy="v4d"],[data-copy="v4e"],[data-copy="v4f"]) .intro { margin-top: 16px; margin-bottom: 0; }
-html:is([data-copy="v4b"],[data-copy="v4c"],[data-copy="v4d"],[data-copy="v4e"],[data-copy="v4f"]) #tabs { margin-top: 16px; }
-html:is([data-copy="v4b"],[data-copy="v4c"],[data-copy="v4d"],[data-copy="v4e"],[data-copy="v4f"]) .tabs-bar { padding: 0 0 16px; }
+html:is([data-copy="v4b"],[data-copy="v4c"],[data-copy="v4d"],[data-copy="v4e"],[data-copy="v4f"]) #tabs { margin-top: 0; }
+/* padding-top даёт отступ над табами и в залипшем состоянии (не только в потоке). */
+html:is([data-copy="v4b"],[data-copy="v4c"],[data-copy="v4d"],[data-copy="v4e"],[data-copy="v4f"]) .tabs-bar { padding: 16px 0 16px; }
 html:is([data-copy="v4b"],[data-copy="v4c"],[data-copy="v4d"],[data-copy="v4e"],[data-copy="v4f"]) #v1Body > .v4b-player { margin-top: 0; }
 html:is([data-copy="v4b"],[data-copy="v4c"],[data-copy="v4d"],[data-copy="v4e"],[data-copy="v4f"]) .v4b-player .watch { margin-top: 0; }
 
 /* Градиенты + стрелки по краям ленты каналов при скролле. */
+/* Вариант 2 (v4f): без страницы «все каналы». Прячем сетку, галерею, тулбар, SEO —
+   показываем только ленту каналов + фрейм программы выбранного канала. */
+html[data-copy="v4f"] .section,
+html[data-copy="v4f"] .toolbar,
+html[data-copy="v4f"] .seo { display: none; }
+html:not([data-copy="v4f"]) .v4f-strip-wrap { display: none; }
+/* Лента каналов и фрейм — по левому краю, на одной линии с верхними табами (без отступа). */
+.v4f-strip-wrap { margin: 0; }
+/* Лента каналов залипает под категориями при скролле (top выставляет JS по высоте табов).
+   2-й уровень табов показываем только при скролле вверх — вниз он прячется за категориями. */
+.v4f-rail { position: sticky; top: 86px; z-index: 55; background: var(--bg); transition: transform .26s ease, opacity .26s ease; }
+html.v4f-railhidden .v4f-rail { transform: translateY(-100%); opacity: 0; pointer-events: none; }
+/* Единый общий фон липких табов — без градиентного затемнения между уровнями.
+   Залипают вплотную к верху (top:0) и с минимальным отступом над пилюлями. */
+html[data-copy="v4f"] .tabs-bar { background: var(--bg); top: 8px; padding-top: 6px; margin-top: 20px; }
+/* Плавный градиент-растворение под липкими табами (и под лентой каналов) — чтобы
+   контент уходил под них мягко, а не обрезался резкой линией. */
+html[data-copy="v4f"] .tabs-bar::after,
+html[data-copy="v4f"] .v4f-rail::after {
+  content: ""; position: absolute; left: 50%; top: 100%; width: 100vw; transform: translateX(-50%);
+  height: 28px; background: linear-gradient(180deg, var(--bg), transparent); pointer-events: none; z-index: -1;
+  opacity: 0; transition: opacity .2s ease;
+}
+/* Подножка-градиент — только когда табы залипли при скролле вниз (не в исходном положении). */
+html[data-copy="v4f"] .tabs-bar.is-stuck::after,
+html[data-copy="v4f"]:has(.tabs-bar.is-stuck) .v4f-rail::after { opacity: 1; }
+/* Наведение на верхние табы (категории) в залипшем состоянии показывает ленту каналов;
+   уводим курсор — она снова прячется. */
+html.v4f-railhidden.v4f-peek .v4f-rail { transform: none; opacity: 1; pointer-events: auto; }
+/* Сплошной фон за табами и в 8px-зазоре над ними — чтобы сверху не проглядывал контент. */
+html[data-copy="v4f"] .tabs-bar::before {
+  content: ""; position: absolute; left: 50%; top: -8px; bottom: 0; width: 100vw; transform: translateX(-50%);
+  background: var(--bg); z-index: -1; display: block; opacity: 1;
+}
+/* Стрелки прокрутки ленты каналов — заметно меньше. */
+.v4f-rail .v4d-strip-arrow svg { width: 7px; height: 18px; }
+.v4f-rail .v4d-strip-fade { width: 64px; }
+.v4f-rail .v4f-strip { padding: 4px 0 12px; }
+.v4f-epg { margin-top: 4px; }
+.v4f-frame { width: 100%; min-height: 70vh; border: 0; display: block; background: var(--bg); }
+/* PiP в Варианте 2 — в правом нижнем углу (не перекрывает левую программу). */
+html[data-copy="v4f"] .v4b-pip { left: auto; right: 24px; }
+/* Встроенная программа канала (schedule.html) в Варианте 2: без табов дней и имени
+   канала сверху; все блоки выровнены по левому краю (без центрирования). */
+html.is-v4f .sched-sticky { display: none; }
+html.is-v4f .sched-col { max-width: none; margin: 0; padding: 0; }
+html.is-v4f .sched-page { padding-top: 8px; }
+
 .v4d-strip-wrap { position: relative; }
 .v4d-strip-fade {
   position: absolute; top: 0; height: 48px; width: 96px; z-index: 5;
@@ -963,7 +1015,16 @@ html:is([data-copy="v4b"],[data-copy="v4c"],[data-copy="v4d"],[data-copy="v4e"],
 /* Отступ до ленты каналов = отступу от ленты до плеера (16px у ленты снизу). */
 html:is([data-copy="v4d"],[data-copy="v4e"],[data-copy="v4f"]) #v1Body > .v4d-strip-wrap { margin-top: 0; }
 /* Табы категорий — без зазора между собой (0 вместо 8px). */
-html:is([data-copy="v4d"],[data-copy="v4e"],[data-copy="v4f"]) .tabs { gap: 0; }
+html:is([data-copy="v4d"],[data-copy="v4e"],[data-copy="v4f"]) .tabs { gap: 2px; }
+/* «Покупки» — купленные спортивные трансляции (дата крупно + название). */
+.buys-row { display: grid; grid-auto-flow: column; grid-auto-columns: min(300px, calc((100% - 4 * 8px) / 5)); gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; }
+.buys-row::-webkit-scrollbar { display: none; }
+.buy-card { display: block; min-width: 0; }
+.buy-thumb { position: relative; aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; background: #1c1c1e; }
+.buy-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.buy-badge { position: absolute; left: 10px; top: 10px; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; color: #fff; background: rgba(0, 0, 0, 0.55); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.buy-date { margin-top: 10px; font-size: 19px; line-height: 23px; font-weight: 700; color: #fff; }
+.buy-title { margin-top: 3px; font-size: 13px; line-height: 17px; color: rgba(255, 255, 255, 0.6); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 /* Заголовки подборок — меньше шрифт и меньше отступ до постеров. */
 html:is([data-copy="v4c"],[data-copy="v4d"],[data-copy="v4e"],[data-copy="v4f"]) .gal-head { font-size: 20px; line-height: 24px; margin-bottom: 10px; }
 .v4d-strip { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 0 0 16px; }
@@ -1114,6 +1175,11 @@ html[data-copy="v4b"] #v4bFeed > .gal:first-child { margin-top: 30px; }
 .poster-like.is-fav { color: var(--accent); opacity: 1; }
 .poster-like.is-fav svg path { fill: currentColor; stroke: none; }
 .v4c-cell:hover .poster-like, .card:hover .poster-like { opacity: 1; }
+/* Платный канал — рубль вместо сердечка: виден всегда, в тёмной «таблетке». */
+.poster-paid { opacity: 1; cursor: default; background: rgba(0, 0, 0, 0.5); border-radius: 50%; -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+.poster-paid svg { width: 16px; height: 16px; }
+.poster-paid svg path { fill: currentColor; stroke: none; }
+.poster-paid:hover { transform: none; }
 
 /* Тултип «Лайк канала» (по макету 1HFN): тёмная пилюля + стрелка вниз, над иконкой. */
 .like-tip {
@@ -1144,6 +1210,18 @@ html[data-copy="v4b"] #v4bFeed > .gal:first-child { margin-top: 30px; }
   background: #000;
 }
 .player-bg { width: 100%; height: 100%; object-fit: cover; }
+/* Заглушка платного спорта (макет Player 1JES) — поверх плеера. */
+.sport-paywall { position: absolute; inset: 0; z-index: 20; }
+.sport-paywall[hidden] { display: none; }
+.sport-pw-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.sport-pw-grad { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,.78) 0%, rgba(0,0,0,.45) 42%, transparent 70%); }
+.sport-pw-body { position: absolute; left: clamp(20px, 4%, 48px); right: 48px; bottom: clamp(20px, 7%, 56px); }
+.sport-pw-title { margin: 0 0 12px; color: #fff; font-weight: 700; font-size: clamp(20px, 2.4vw, 34px); line-height: 1.12; max-width: 15em; }
+.sport-pw-sub { margin: 0 0 20px; color: rgba(255,255,255,.72); font-size: clamp(13px, 1.1vw, 16px); line-height: 1.4; max-width: 34em; }
+.sport-pw-btns { display: flex; gap: 12px; flex-wrap: wrap; }
+.sport-pw-btn { display: inline-flex; align-items: center; height: 48px; padding: 0 22px; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; }
+.sport-pw-btn.is-primary { background: #fa3e5d; color: #fff; }
+.sport-pw-btn.is-ghost { background: rgba(255,255,255,.14); color: #fff; backdrop-filter: blur(6px); }
 .player::before {
   content: "";
   position: absolute; inset: 0;
@@ -1248,6 +1326,7 @@ html[data-copy="v4b"] #v4bFeed > .gal:first-child { margin-top: 30px; }
   font-size: 12px;
   font-weight: 500;
 }
+.epg-live.is-buy { background: #3E8E0B; }
 /* Liquid Glass — плавающая стеклянная пилюля */
 /* Крупная плавающая кнопка «Вся телепрограмма» в плеере — по макету 9OX-0:
    светлая полупрозрачная пилюля с blur. */
@@ -1699,6 +1778,9 @@ html[data-shell-open] .app-shell {
   background: #F30745; color: #fff; font-size: 14px; font-weight: 600; white-space: nowrap;
 }
 .fe-watch:hover { background: #ff1f58; }
+/* Спортивный канал — «Купить трансляцию», насыщенный салатовый. */
+.fe-watch-buy { background: #5DAE12; }
+.fe-watch-buy:hover { background: #6BC016; }
 .tz-about-title { font-size: 24px; font-weight: 700; margin: 0 0 12px; }
 
 /* Блок «Все выпуски шоу» (макет V8K, шоу «Мама в 16») */
@@ -3029,25 +3111,44 @@ html:is([data-copy="v4c"],[data-copy="v4d"],[data-copy="v4e"],[data-copy="v4f"])
    в прозрачность через промежуточную точку, длиннее по высоте). */
 .is-embed .sched-sticky {
   padding-bottom: 52px;
-  background: linear-gradient(180deg, #000 0%, #000 16%, rgba(0, 0, 0, 0.55) 52%, rgba(0, 0, 0, 0.18) 78%, transparent 100%);
+  /* Фон под табами дат плотнее/темнее — почти сплошной чёрный, затем короткая растушёвка. */
+  background: linear-gradient(180deg, #000 0%, #000 74%, rgba(0, 0, 0, 0.72) 88%, transparent 100%);
 }
+/* Стрелки и градиенты-растушёвки по краям ленты дат при скролле. */
+.day-tabs-wrap { position: relative; }
+.is-embed .dt-fade { position: absolute; top: 0; bottom: 16px; width: 76px; z-index: 3; display: flex; align-items: center; pointer-events: none; transition: opacity .2s ease; }
+.is-embed .dt-fade.is-hidden { opacity: 0; }
+.is-embed .dt-fade.r { right: 0; justify-content: flex-end; background: linear-gradient(90deg, transparent, #000 72%); }
+.is-embed .dt-fade.l { left: 0; justify-content: flex-start; background: linear-gradient(270deg, transparent, #000 72%); }
+.is-embed .dt-arrow { pointer-events: auto; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; color: #fff; cursor: pointer; opacity: .9; }
+.is-embed .dt-fade.l .dt-arrow { margin-left: 2px; }
+.is-embed .dt-fade.r .dt-arrow { margin-right: 2px; }
 /* Табы переключения дат — в одну линию со скроллом (без переноса). */
 .is-embed .day-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 8px; margin-bottom: 0; }
 .is-embed .day-tabs::-webkit-scrollbar { display: none; }
 .is-embed .day-tab { flex: 0 0 auto; height: 32px; padding: 0 13px; font-size: 14px; }
 /* Карточка передачи — среднее по размеру (меньше исходного, но крупнее совсем мелкого). */
 .is-embed .tz-list { gap: 18px; }
-.is-embed .fe-card { gap: 16px; }
+.is-embed .fe-card { gap: 12px; }
+/* Вариант 1 (шторка): карточка текущего эфира выезжает влево (её время сдвигается к
+   краю), у остальных строк время стоит в 12px от постера — без общего сдвига.
+   Сдвиг = разнице постеров, слева добавляем столько же паддинга, чтобы время эфира
+   не обрезалось. */
+.is-embed:not(.is-v4f) .fe-card.is-now { margin-left: -56px; }
+.is-embed:not(.is-v4f) .sched-col { padding-left: 56px; }
 .is-embed .fe-timecol { width: 66px; min-width: 66px; gap: 4px; }
 .is-embed .fe-card .fe-time { font-size: 17px; line-height: 21px; }
 /* «в эфире» — в одну строку (без переноса). */
 .is-embed .fe-onair { font-size: 12px; white-space: nowrap; }
 .is-embed .fe-poster { width: 168px; border-radius: 12px; }
-.is-embed .fe-card.is-now .fe-poster { width: 232px; border-radius: 16px; }
-/* Все постеры выровнены по ПРАВОМУ краю: обычные сдвигаем вправо на разницу с большим
-   постером эфира (232−168), чтобы правые края и колонки описания совпадали, а крупный
-   постер «в эфире» уходил левее остальных. */
 .is-embed .fe-card:not(.is-now) .fe-poster { margin-left: 0; }
+/* Вариант 1 (шторка): постер эфира крупнее (на величину сдвига 56px), правый край
+   совпадает с остальными, сам постер выступает влево. */
+.is-embed:not(.is-v4f) .fe-card.is-now .fe-poster { width: 224px; border-radius: 16px; }
+/* Вариант 2 (v4f): все постеры одного размера и выровнены по левому краю (в т.ч. эфир). */
+.is-v4f .fe-card.is-now { margin-left: 0; }
+.is-v4f .fe-poster,
+.is-v4f .fe-card.is-now .fe-poster { width: 200px; border-radius: 14px; }
 /* Постер чуть увеличивается на наведении — только у прямого эфира и контента с Иви. */
 .is-embed .fe-card.is-now .fe-poster,
 .is-embed .fe-card.is-ivi .fe-poster { transition: transform .2s ease; }
