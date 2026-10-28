@@ -1,5 +1,6 @@
 // Drag-and-drop каналов в ленте второго этажа фильтров (.v4d-strip): зажать постер
-// (долгое нажатие пальцем или мышью) и двигать влево-вправо — только внутри ленты.
+// (на тач-экране — долгое нажатие, мышью — просто потянуть) и двигать влево-вправо —
+// только внутри ленты.
 // Делегирование на document: ленты перерисовываются при смене категории.
 const HOLD_MS = 350;   // сколько держать до начала перетаскивания
 const SLOP = 8;        // сдвиг до срабатывания = это скролл, а не зажатие
@@ -119,8 +120,11 @@ document.addEventListener("pointerdown", (e) => {
 document.addEventListener("pointermove", (e) => {
   if (!st) return;
   if (!st.dragging) {
-    if (Math.hypot(e.clientX - st.x0, e.clientY - st.y0) > SLOP) cancel(); // это скролл
-    return;
+    if (Math.hypot(e.clientX - st.x0, e.clientY - st.y0) <= SLOP) return;
+    // Мышью тянут сразу, без удержания; на тач-экране сдвиг до удержания = скролл ленты.
+    if (e.pointerType !== "mouse") { cancel(); return; }
+    clearTimeout(st.timer);
+    startDrag();
   }
   e.preventDefault();
   move(e.clientX);
