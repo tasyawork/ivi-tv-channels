@@ -3167,3 +3167,12 @@ html:is([data-copy="v4c"],[data-copy="v4d"],[data-copy="v4e"],[data-copy="v4f"])
 :is(.is-embed, .is-v4list) .fe-series-title { font-size: 15px; line-height: 19px; margin-bottom: 10px; }
 /* Блок «Сейчас в эфире» в шторке не показываем. */
 .is-embed .now-air { display: none; }
+
+/* Drag-and-drop каналов в ленте второго этажа (strip-dnd.js). */
+.v4d-strip .v4d-chip { -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
+.v4d-strip .v4d-chip img { -webkit-user-drag: none; pointer-events: none; }
+.v4d-strip.is-sorting { scroll-behavior: auto; }
+.v4d-chip.is-dragging {
+  position: relative; z-index: 10; transition: none !important; cursor: grabbing;
+  background: #ffffff33; box-shadow: 0 10px 28px rgba(0, 0, 0, .55); scale: 1.06;
+}
