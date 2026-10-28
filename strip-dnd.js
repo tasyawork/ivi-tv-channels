@@ -7,6 +7,41 @@ const EDGE = 48;       // зона автопрокрутки у краёв ле
 
 let st = null; // { chip, strip, x0, y0, timer, dragging, grabDX, tx }
 
+// ---- Сохранённый порядок каналов (общий для всех лент и категорий) ----
+const KEY = "ivi-proto-chip-order";
+const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch { return []; } };
+const idsOf = (strip) => [...strip.querySelectorAll(".v4d-chip")].map((c) => c.dataset.id);
+
+// После перетаскивания: каналы этой ленты встают в общий список в новом порядке
+// (на место первого из них), остальные сохранённые позиции не трогаем.
+function save(strip) {
+  const ids = idsOf(strip);
+  const saved = load();
+  const at = saved.findIndex((id) => ids.includes(id));
+  const rest = saved.filter((id) => !ids.includes(id));
+  rest.splice(at < 0 ? rest.length : at, 0, ...ids);
+  try { localStorage.setItem(KEY, JSON.stringify(rest)); } catch {}
+}
+
+// Применяем порядок к отрисованной ленте: каналы с сохранённой позицией
+// переставляются между собой, остальные остаются на своих местах.
+function applyOrder(strip) {
+  const rank = new Map(load().map((id, i) => [id, i]));
+  const chips = [...strip.querySelectorAll(":scope > .v4d-chip")];
+  const known = chips.filter((c) => rank.has(c.dataset.id));
+  const sorted = [...known].sort((a, b) => rank.get(a.dataset.id) - rank.get(b.dataset.id));
+  if (sorted.every((c, i) => c === known[i])) return; // уже по порядку
+  const slots = chips.map((c) => (rank.has(c.dataset.id) ? sorted.shift() : c));
+  strip.append(...slots);
+}
+
+// Ленты перерисовываются при смене категории/варианта — ловим это и сортируем.
+new MutationObserver((muts) => {
+  const strips = new Set(muts.map((m) => m.target.closest?.(".v4d-strip")).filter(Boolean));
+  document.querySelectorAll(".v4d-strip").forEach((s) => { if (!s.dataset.ordered) strips.add(s); });
+  strips.forEach((s) => { if (!s.classList.contains("is-sorting")) { s.dataset.ordered = "1"; applyOrder(s); } });
+}).observe(document.body, { childList: true, subtree: true });
+
 function cancel() {
   if (!st) return;
   clearTimeout(st.timer);
@@ -15,6 +50,7 @@ function cancel() {
     chip.classList.remove("is-dragging");
     strip.classList.remove("is-sorting");
     chip.style.transform = "";
+    save(strip);
     // Глушим клик, который придёт следом за отпусканием (иначе переключится канал).
     const kill = (e) => { e.stopPropagation(); e.preventDefault(); };
     document.addEventListener("click", kill, { capture: true, once: true });
