@@ -147,14 +147,18 @@ export const PLAYER_TABS = TABS;
 
 export function filterByTag(channels, tag) {
   if (!tag) return channels;
-  // «Мои каналы»: сначала залайканные (в порядке лайка), затем «те, что смотрели долго» —
-  // кино-каналы, добор остальными до 12.
+  // «Мои каналы»: сначала залайканные (в порядке лайка — новый первым, порядок меняется
+  // перетаскиванием), затем «продолжить просмотр» — каналы, которые смотрели от минуты
+  // (ivi-watched-channels, пишет strip-dnd.js). Пока ничего не смотрели — демо-добор
+  // кино-каналами и остальными до 12.
   if (tag === "__my") {
-    let fav = [];
-    try { fav = JSON.parse(localStorage.getItem("ivi-fav-channels") || "[]"); } catch {}
-    const favSet = new Set(fav.map(String));
+    const read = (k) => { try { return JSON.parse(localStorage.getItem(k) || "[]").map(String); } catch { return []; } };
+    const fav = read("ivi-fav-channels");
+    const favSet = new Set(fav);
     const byId = new Map(channels.map((c) => [String(c.id), c]));
-    const liked = fav.map((id) => byId.get(String(id))).filter(Boolean);
+    const liked = fav.map((id) => byId.get(id)).filter(Boolean);
+    const watched = read("ivi-watched-channels").filter((id) => !favSet.has(id)).map((id) => byId.get(id)).filter(Boolean);
+    if (watched.length) return [...liked, ...watched];
     const cinema = channels.filter((c) => !favSet.has(String(c.id)) && (c.tags || []).includes("каналы с фильмами и сериалами"));
     const out = [...liked, ...cinema];
     const have = new Set(out.map((c) => String(c.id)));

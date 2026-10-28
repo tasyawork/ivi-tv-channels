@@ -1,6 +1,6 @@
-// Drag-and-drop каналов в ленте второго этажа фильтров (.v4d-strip): зажать постер
-// (на тач-экране — долгое нажатие, мышью — просто потянуть) и двигать влево-вправо —
-// только внутри ленты.
+// Drag-and-drop каналов в ленте второго этажа фильтров (.v4d-strip) — только во вкладке
+// «Мои каналы»: зажать постер (на тач-экране — долгое нажатие, мышью — просто потянуть)
+// и двигать влево-вправо внутри ленты.
 // Делегирование на document: ленты перерисовываются при смене категории.
 const HOLD_MS = 350;   // сколько держать до начала перетаскивания
 const SLOP = 8;        // сдвиг до срабатывания = это скролл, а не зажатие
@@ -8,40 +8,40 @@ const EDGE = 48;       // зона автопрокрутки у краёв ле
 
 let st = null; // { chip, strip, x0, y0, timer, dragging, grabDX, tx }
 
-// ---- Сохранённый порядок каналов (общий для всех лент и категорий) ----
-const KEY = "ivi-proto-chip-order";
-const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch { return []; } };
-const idsOf = (strip) => [...strip.querySelectorAll(".v4d-chip")].map((c) => c.dataset.id);
+// ---- «Мои каналы»: перетаскивать можно только здесь ----
+// Порядок ленты = лайкнутые (в своём порядке, новый лайк — первым), дальше «продолжить
+// просмотр» — что смотрели от минуты (см. filterByTag("__my") в ivi-api.js).
+const FAV_KEY = "ivi-fav-channels";
+const WATCHED_KEY = "ivi-watched-channels";
+const read = (k) => { try { return (JSON.parse(localStorage.getItem(k)) || []).map(String); } catch { return []; } };
+const write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+const inMyChannels = () =>
+  /^\s*Мои каналы/.test(document.querySelector("#tabs .tab.is-active")?.textContent || "");
 
-// После перетаскивания: каналы этой ленты встают в общий список в новом порядке
-// (на место первого из них), остальные сохранённые позиции не трогаем.
+// После перетаскивания: канал, поставленный перед любым лайкнутым, сам становится
+// лайкнутым; порядок лайков = их порядок в ленте.
 function save(strip) {
-  const ids = idsOf(strip);
-  const saved = load();
-  const at = saved.findIndex((id) => ids.includes(id));
-  const rest = saved.filter((id) => !ids.includes(id));
-  rest.splice(at < 0 ? rest.length : at, 0, ...ids);
-  try { localStorage.setItem(KEY, JSON.stringify(rest)); } catch {}
+  const favs = new Set(read(FAV_KEY));
+  const chips = [...strip.querySelectorAll(".v4d-chip")];
+  const lastFav = chips.map((c) => favs.has(c.dataset.id)).lastIndexOf(true);
+  const pos = chips.indexOf(st.chip);
+  if (pos === 0 || pos < lastFav) favs.add(st.chip.dataset.id); // первым или перед лайкнутым → лайк
+  const order = chips.map((c) => c.dataset.id).filter((id) => favs.has(id));
+  // Лайкнутые каналы, которых нет в ленте (на всякий случай), сохраняем в конце.
+  write(FAV_KEY, [...order, ...[...favs].filter((id) => !order.includes(id))]);
+  chips.forEach((c) => c.querySelector(".v4d-chip-fav")?.classList.toggle("is-fav", favs.has(c.dataset.id)));
 }
 
-// Применяем порядок к отрисованной ленте: каналы с сохранённой позицией
-// переставляются между собой, остальные остаются на своих местах.
-function applyOrder(strip) {
-  const rank = new Map(load().map((id, i) => [id, i]));
-  const chips = [...strip.querySelectorAll(":scope > .v4d-chip")];
-  const known = chips.filter((c) => rank.has(c.dataset.id));
-  const sorted = [...known].sort((a, b) => rank.get(a.dataset.id) - rank.get(b.dataset.id));
-  if (sorted.every((c, i) => c === known[i])) return; // уже по порядку
-  const slots = chips.map((c) => (rank.has(c.dataset.id) ? sorted.shift() : c));
-  strip.append(...slots);
-}
-
-// Ленты перерисовываются при смене категории/варианта — ловим это и сортируем.
-new MutationObserver((muts) => {
-  const strips = new Set(muts.map((m) => m.target.closest?.(".v4d-strip")).filter(Boolean));
-  document.querySelectorAll(".v4d-strip").forEach((s) => { if (!s.dataset.ordered) strips.add(s); });
-  strips.forEach((s) => { if (!s.classList.contains("is-sorting")) { s.dataset.ordered = "1"; applyOrder(s); } });
-}).observe(document.body, { childList: true, subtree: true });
+// «Продолжить просмотр»: канал, который смотрят в плеере минуту и дольше, попадает
+// в начало списка просмотренных. Плеер пишет текущий канал в v4bCurrentChannel.
+let watchId = null, watchFrom = 0;
+setInterval(() => {
+  const id = localStorage.getItem("v4bCurrentChannel");
+  if (id !== watchId) { watchId = id; watchFrom = Date.now(); return; }
+  if (!id || Date.now() - watchFrom < 60000) return;
+  const w = read(WATCHED_KEY);
+  if (w[0] !== id) write(WATCHED_KEY, [id, ...w.filter((x) => x !== id)].slice(0, 20));
+}, 5000);
 
 function cancel() {
   if (!st) return;
@@ -111,7 +111,7 @@ function move(x) {
 document.addEventListener("pointerdown", (e) => {
   if (e.button > 0) return;
   const chip = e.target.closest(".v4d-strip .v4d-chip");
-  if (!chip || e.target.closest(".v4d-chip-fav")) return;
+  if (!chip || e.target.closest(".v4d-chip-fav") || !inMyChannels()) return;
   cancel();
   st = { chip, strip: chip.parentElement, x0: e.clientX, y0: e.clientY, dragging: false };
   st.timer = setTimeout(() => st && startDrag(), HOLD_MS);
